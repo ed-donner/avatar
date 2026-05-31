@@ -16,7 +16,7 @@ AI twin, and the real human hold a three-way conversation.
 | `icons.svg` | Icon sprite (`<use href="icons.svg#i-…">`) |
 | `assets/` | `avatar-human.png`, `avatar-robot.png`, `avatar-robot-round.png` |
 | `mockups/` | Hi-fi reference screens: `Visitor Chat.html`, `Admin Dashboard.html` |
-| `docs/` | `ux-flows.md`, `components.md`, `avatar-generation.md` |
+| `docs/` | `ux-flows.md`, `components.md`, `avatar-generation.md`, `background-texture.md` |
 
 ## The system in one breath
 Dark-first, navy-tinted surfaces · editorial serif (Newsreader) + crisp grotesque (Hanken Grotesk)
