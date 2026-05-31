@@ -61,10 +61,11 @@ function getCookie(name: string): string | null {
 
 // ---- Visitor identity ----
 
-/** Derive an initials token from a free-text name (the field by default). */
+/** Derive an initials token from a free-text name. Falls back to "You" when no
+ *  name is known (friendlier than a bare "?"). */
 function initialsFrom(raw: string | null | undefined): string {
   const name = (raw ?? "").trim();
-  if (!name) return "?";
+  if (!name) return "You";
   const parts = name.split(/\s+/).filter(Boolean);
   const letters = parts.length === 1 ? parts[0].slice(0, 2) : parts[0][0] + parts[parts.length - 1][0];
   return letters.toUpperCase();
@@ -88,8 +89,9 @@ function hideIntro(): void {
 /** Append a visitor bubble (escaped plain text), recording any backing id. */
 function renderVisitor(content: string, time: string, id?: number, name?: string | null): HTMLElement {
   const initials = name !== undefined ? initialsFrom(name) : initialsFrom(nameField.value);
+  const initialsClass = initials === "You" ? "avatar-initials is-you" : "avatar-initials";
   const row = el("div", { class: "msg msg--visitor" }, [
-    el("span", { class: "avatar-initials" }, [initials]),
+    el("span", { class: initialsClass }, [initials]),
     el("div", { class: "msg-body", html:
       `<div class="msg-meta"><span class="msg-time">${escapeHtml(time)}</span></div>` +
       `<div class="bubble"><p>${escapeHtml(content)}</p></div>` }),

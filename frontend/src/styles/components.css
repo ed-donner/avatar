@@ -198,6 +198,8 @@ body {
   text-transform: uppercase;
 }
 .avatar-initials--sm { width: 30px; height: 30px; font-size: var(--text-2xs); }
+/* "You" placeholder (no name yet) reads as a word, not uppercase initials */
+.avatar-initials.is-you { text-transform: none; letter-spacing: 0; }
 
 /* Avatar (twin) image with cyan identity ring */
 .avatar-twin { border: 1.5px solid var(--blue-line); box-shadow: 0 0 0 3px rgba(40,168,224,0.08); }

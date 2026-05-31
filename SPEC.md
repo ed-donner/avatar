@@ -22,7 +22,7 @@ There's also a Reset chat button, that clears the chat and assigns a new convers
 
 The chat is presented as an instant message experience, but more refined that your typical Chatbot screen. The users message have their initials in a bubble. Responding to the user is either the digital twin, or in some cases the human may respond in addition to the Avatar.
 
-The visitor chat is fully responsive and works great on mobile as well as desktop, in both dark and light mode. The intro screen offers a few example prompts; clicking one submits it immediately. Typing a bare `Qn` (e.g. `Q2`) is an instant-answer shortcut that returns that FAQ with no LLM call; the reply restates the question before the answer (e.g. "**Q2:** ...the question... / ...the answer...").
+The visitor chat is fully responsive and works great on mobile as well as desktop, in both dark and light mode. The intro screen offers a few example prompts; clicking one submits it immediately. Typing a bare `Qn` (e.g. `Q2`) is an instant-answer shortcut that returns that FAQ with no LLM call; the reply restates the question before the answer (e.g. "**Q2:** ...the question... / ...the answer..."). A deep link `?q=N` (e.g. `/?q=2`) opens the page and immediately submits that `Qn`, so a single shared link can answer a specific question on arrival; the parameter is then cleared from the URL.
 
 ### The Human Admin Experience
 
@@ -52,7 +52,10 @@ Be absolutely sure to use current, idiomatic treatment of OpenAI Agents SDK. Use
 - The frontend should be an HTML/TS/Vite static site in frontend/
 - The backend should be FastAPI with a uv project in a folder backend/ and it should serve the static UI in / and /admin
 - The platform should be build as a single Docker container. There should be a scripts/ folder that has a start_mac.sh and stop_mac.sh and start_pc.ps1 and stop_pc.ps1. The start scripts should stop the Docker container if running, then rebuild.
-- The platform can be deployed to fly.io (but we won't do that yet).
+- The platform can be deployed to fly.io as the single container the Dockerfile and `scripts/` already build and run (not done yet). Notes for embedding it in an existing site (e.g. a WordPress page) via an `<iframe>`:
+  - The visitor page reads `?q=N` from its own URL, so the iframe's `src` can carry it. The host page copies its own `?q=` onto the iframe (server-side in a template/shortcode, or a few lines of JS) so that, e.g., `edwarddonner.com/avatar?q=2` answers Q2 inside the iframe.
+  - The app sets no `X-Frame-Options`/CSP, so it can be framed. If security headers are added later, prefer `Content-Security-Policy: frame-ancestors <host>` over `X-Frame-Options: DENY`.
+  - "Keep chat" relies on a `SameSite=Lax` cookie, which a browser treats as third-party inside a cross-site iframe (so persistence may not stick). To keep cookies first-party, serve the app from a subdomain of the host (e.g. `avatar.example.com`) via a fly.io custom domain and embed that.
 - The folder `knowledge/` holds the owner knowledge factored into the system prompt: `knowledge.md` (a rich first-person profile), `style.md` (voice, formatting and safety rules), `faq.jsonl` (the numbered FAQ — each row has a concise `query` for routing plus the full original `question` and `answer`), and `pic.jpg` (the owner photo used for the avatars)
 
 ### The Reference Files
