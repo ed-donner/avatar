@@ -119,4 +119,35 @@ Conversations are stored in a single Postgres table in Supabase. Follow these st
 
 That's it - once all the values above are in `.env`, the setup is complete.
 
+## Running the app
+
+### Docker (recommended)
+
+The app builds and runs as a single container. From the project root:
+
+- macOS / Linux: `./scripts/start_mac.sh` to build and run, `./scripts/stop_mac.sh` to stop.
+- Windows: `./scripts/start_pc.ps1` to build and run, `./scripts/stop_pc.ps1` to stop.
+
+The start script stops any existing `avatar` container, rebuilds the image, and runs it with your root `.env`. When it finishes, open http://localhost:8000 (admin at http://localhost:8000/admin). Docker must be running.
+
+### Local development
+
+Run the backend and frontend in two terminals.
+
+Backend (FastAPI on port 8000):
+
+```
+cd backend
+uv run uvicorn app.main:app --reload --app-dir .
+```
+
+Frontend (Vite dev server):
+
+```
+cd frontend
+npm install
+npm run dev
+```
+
+Open the URL Vite prints. The Vite dev server proxies `/api` to the backend on http://localhost:8000, so run the backend alongside it.
 

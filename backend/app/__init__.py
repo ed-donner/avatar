@@ -1,0 +1,1 @@
+"""Avatar backend application package."""

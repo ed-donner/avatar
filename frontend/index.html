@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<title>Avatar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:ital,wght@0,400;0,500;0,600;0,700;1,500&family=JetBrains+Mono:wght@400;500&family=Newsreader:ital,opsz,wght@0,18..72,400;0,18..72,500;0,18..72,600;1,18..72,400;1,18..72,500&display=swap" rel="stylesheet">
+</head>
+<body class="hud-grid">
+
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark" aria-hidden="true">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+        <circle cx="9.5" cy="13" r="5" fill="var(--blue-strong)"/>
+        <circle cx="15.5" cy="13" r="5" stroke="var(--blue-strong)" stroke-width="1.6"/>
+        <circle cx="15.5" cy="13" r="1.4" fill="var(--yellow-strong)"/>
+      </svg>
+    </span>
+    <div>
+      <div class="brand-name">Avatar</div>
+      <div class="brand-sub" id="brandSub">digital twin</div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <label class="name-field" title="Your name or initials">
+      <svg class="icon icon--sm" style="color:var(--text-faint)"><use href="/icons.svg#i-visitor"/></svg>
+      <input type="text" id="nameField" placeholder="Your name / initials" autocomplete="off" />
+    </label>
+    <label class="switch" title="Remember this conversation in your browser">
+      <input type="checkbox" id="keepChat" checked>
+      <span class="track"><span class="thumb"></span></span>
+      <span class="switch-label">Keep chat</span>
+    </label>
+    <button class="btn btn--ghost btn--sm" id="resetBtn"><svg class="icon icon--sm"><use href="/icons.svg#i-reset"/></svg> Reset</button>
+    <span class="divider-v"></span>
+    <button class="icon-btn" id="themeToggle" title="Toggle light / dark">
+      <svg class="icon icon--sm theme-moon"><use href="/icons.svg#i-moon"/></svg>
+      <svg class="icon icon--sm theme-sun" style="display:none"><use href="/icons.svg#i-sun"/></svg>
+    </button>
+  </div>
+</header>
+
+<main class="chat">
+  <div class="convo scroll" id="convo">
+    <div class="convo-inner" id="convoInner">
+      <!-- Intro card (hidden once the first message is sent) -->
+      <div class="intro" id="intro">
+        <div class="avatar avatar-twin" style="background-image:url('/avatar-robot-round.png')"></div>
+        <h1 id="introHeading">I'm a <em>digital twin</em>.<br>Ask me anything &mdash; the real human might just chime in.</h1>
+        <p id="introBody">I know my owner's background, courses, and curriculum. I can also put you in touch directly.</p>
+        <div class="suggest-row" id="suggestRow">
+          <button class="chip">Which course covers RAG?</button>
+          <button class="chip">Is it suitable for beginners?</button>
+          <button class="chip">Can I talk to the real human?</button>
+        </div>
+      </div>
+      <!-- Messages are appended here by visitor/main.ts -->
+    </div>
+  </div>
+
+  <div class="composer-dock">
+    <div class="composer-wrap">
+      <div class="composer" id="composer">
+        <textarea id="composerInput" rows="1" placeholder="Message the twin&hellip;  (type &ldquo;Q2&rdquo; for an instant answer)" autofocus></textarea>
+        <button class="btn-send" id="sendBtn" title="Send (Enter)"><svg class="icon"><use href="/icons.svg#i-send"/></svg></button>
+      </div>
+      <div class="composer-hint">
+        <span><span class="kbd">Enter</span> to send</span>
+        <span class="sep"></span>
+        <span><span class="kbd">Shift</span>+<span class="kbd">Enter</span> for a new line</span>
+        <span class="sep"></span>
+        <span>Type <strong style="color:var(--blue-ink)">Qn</strong> for an instant FAQ answer</span>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script type="module" src="/src/visitor/main.ts"></script>
+</body>
+</html>

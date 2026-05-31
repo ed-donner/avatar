@@ -1,0 +1,67 @@
+/* Visitor page layout. Lifted from design-system/mockups/Visitor Chat.html.
+   Component classes come from components.css; this file holds page chrome. */
+
+html, body { height: 100%; }
+body { display: flex; flex-direction: column; overflow: hidden; }
+
+/* ---- Top bar ---- */
+.topbar {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--space-4);
+  height: var(--header-h); padding: 0 var(--space-6); flex: none;
+  border-bottom: 1px solid var(--border); background: var(--surface-1);
+  position: relative; z-index: 5;
+}
+.brand { display: flex; align-items: center; gap: var(--space-3); }
+.brand-mark { width: 36px; height: 36px; flex: none; border-radius: var(--radius-md);
+  background: var(--surface-sunken); border: 1px solid var(--border-strong);
+  display: flex; align-items: center; justify-content: center; }
+.brand-name { font-family: var(--font-display); font-weight: 600; font-size: 1.45rem;
+  letter-spacing: -0.01em; line-height: 1; }
+.brand-sub { font-size: var(--text-2xs); color: var(--text-faint); font-family: var(--font-mono);
+  letter-spacing: var(--tracking-wide); text-transform: uppercase; margin-top: 3px; white-space: nowrap; }
+.switch-label { white-space: nowrap; }
+.topbar-right { display: flex; align-items: center; gap: var(--space-3); }
+.icon-btn { width: 38px; height: 38px; border-radius: var(--radius-md); border: 1px solid var(--border);
+  background: var(--surface-1); color: var(--text-muted); display: inline-flex; align-items: center;
+  justify-content: center; cursor: pointer; transition: all var(--dur) var(--ease-out); }
+.icon-btn:hover { background: var(--surface-2); color: var(--text); border-color: var(--border-strong); }
+.divider-v { width: 1px; height: 26px; background: var(--border); }
+
+/* ---- Chat region ---- */
+.chat { flex: 1; min-height: 0; display: flex; flex-direction: column; position: relative; }
+.chat::before { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0.6; }
+.convo { flex: 1; min-height: 0; overflow-y: auto; }
+.convo-inner { max-width: var(--container-chat); margin: 0 auto; padding: var(--space-8) var(--space-6) var(--space-6);
+  display: flex; flex-direction: column; gap: var(--space-6); }
+
+.day-sep { display: flex; align-items: center; gap: var(--space-4); margin: var(--space-1) 0; }
+.day-sep::before, .day-sep::after { content: ""; height: 1px; background: var(--hairline); flex: 1; }
+.day-sep span { font-family: var(--font-mono); font-size: var(--text-2xs); color: var(--text-faint);
+  letter-spacing: var(--tracking-wide); text-transform: uppercase; }
+
+/* intro card */
+.intro { text-align: center; padding: var(--space-4) 0 var(--space-2); display: flex;
+  flex-direction: column; align-items: center; gap: var(--space-4); }
+.intro .avatar { width: 72px; height: 72px; }
+.intro h1 { font-family: var(--font-display); font-weight: 500; font-size: var(--text-2xl);
+  line-height: 1.1; letter-spacing: -0.02em; margin: 0; max-width: 18ch; }
+.intro h1 em { font-style: italic; color: var(--blue); }
+.intro p { margin: 0; color: var(--text-muted); max-width: 46ch; font-size: var(--text-md); }
+.suggest-row { display: flex; flex-wrap: wrap; gap: var(--space-2); justify-content: center; margin-top: var(--space-2); }
+
+/* ---- Composer dock ---- */
+.composer-dock { flex: none; padding: var(--space-4) var(--space-6) var(--space-6);
+  background: var(--surface-0); }
+.composer-wrap { max-width: var(--container-chat); margin: 0 auto; }
+.composer-hint { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap;
+  margin-top: var(--space-3); font-size: var(--text-xs); color: var(--text-faint); padding: 0 var(--space-1); }
+.composer-hint .sep { width: 3px; height: 3px; border-radius: 50%; background: var(--text-faint); opacity: 0.5; }
+.typing { display: inline-flex; align-items: center; gap: 7px; color: var(--text-muted);
+  font-size: var(--text-sm); padding: 0 var(--space-1) var(--space-2); }
+.typing .dots span { display:inline-block; width:5px; height:5px; border-radius:50%; background: var(--role-avatar);
+  margin-right:3px; animation: blink 1.2s infinite ease-in-out; }
+.typing .dots span:nth-child(2){ animation-delay:.2s } .typing .dots span:nth-child(3){ animation-delay:.4s }
+@keyframes blink { 0%,60%,100%{opacity:.25} 30%{opacity:1} }
+
+/* small inline error line under a streamed reply */
+.stream-error { font-size: var(--text-sm); color: var(--danger); padding: 2px 0; }

@@ -1,0 +1,26 @@
+# Secrets are never baked into the image (run with --env-file .env).
+.env
+.env.*
+
+# Node and build outputs (frontend is built inside the image).
+**/node_modules
+frontend/dist
+
+# Python virtualenvs and caches.
+**/.venv
+**/__pycache__
+**/*.py[cod]
+**/.pytest_cache
+**/.ruff_cache
+**/.mypy_cache
+
+# Version control and OS cruft.
+.git
+.gitignore
+**/.DS_Store
+
+# Docs, references and tests not needed at runtime.
+design-system/mockups
+design-system/docs
+reference/
+test/

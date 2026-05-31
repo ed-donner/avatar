@@ -1,0 +1,207 @@
+/* ============================================================================
+   AVATAR — Design Tokens (single source of truth)
+   Digital Twin platform. Dark mode is the hero; light is fully supported.
+   Theme is controlled by [data-theme="dark"|"light"] on <html> or any wrapper.
+   ----------------------------------------------------------------------------
+   Brand palette (fixed, from SPEC):
+     Yellow  #ecad0a  — the "spark": accent lines, highlights, human-in-the-loop
+     Blue    #209dd7  — primary identity: links, key sections, the Avatar
+     Purple  #753991  — RESERVED for primary actions (submit) only
+     Navy    #032147  — structure / headings (and the dark canvas itself)
+     Gray    #888888  — supporting text, labels
+   Rules: no gradients in UI chrome, no purple overuse, no left-border accent
+   panels, no emoji. Blue-led, yellow as the spark.
+   ========================================================================== */
+
+:root {
+  /* ---- Brand constants (hue anchors — do not theme these) ---- */
+  --brand-yellow: #ecad0a;
+  --brand-blue:   #209dd7;
+  --brand-purple: #753991;
+  --brand-navy:   #032147;
+  --brand-gray:   #888888;
+
+  /* ---- Typography families ---- */
+  --font-display: "Newsreader", Georgia, "Times New Roman", serif;
+  --font-sans: "Hanken Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* ---- Type scale (root 16px) ---- */
+  --text-2xs: 0.6875rem; /* 11 — mono micro labels */
+  --text-xs:  0.75rem;   /* 12 */
+  --text-sm:  0.8125rem; /* 13 */
+  --text-base:0.9375rem; /* 15 — UI body default */
+  --text-md:  1.0625rem; /* 17 — message body */
+  --text-lg:  1.375rem;  /* 22 */
+  --text-xl:  1.875rem;  /* 30 */
+  --text-2xl: 2.5rem;    /* 40 */
+  --text-3xl: 3.5rem;    /* 56 */
+  --text-4xl: 4.75rem;   /* 76 — display */
+
+  --leading-tight: 1.08;
+  --leading-snug: 1.28;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.62;
+
+  --tracking-tight: -0.02em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.04em;
+  --tracking-caps: 0.14em;  /* mono eyebrow labels */
+
+  /* ---- Spacing (4px base) ---- */
+  --space-0: 0;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 40px;
+  --space-9: 48px;
+  --space-10: 64px;
+  --space-11: 80px;
+  --space-12: 112px;
+
+  /* ---- Radius (sharp, modern — crisp but not hard) ---- */
+  --radius-xs: 3px;
+  --radius-sm: 5px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-pill: 999px;
+
+  /* ---- Motion ---- */
+  --ease-out: cubic-bezier(0.22, 0.78, 0.24, 1);
+  --ease-in-out: cubic-bezier(0.6, 0, 0.2, 1);
+  --dur-fast: 120ms;
+  --dur: 200ms;
+  --dur-slow: 360ms;
+
+  /* ---- Layout ---- */
+  --container-chat: 760px;     /* visitor conversation column */
+  --sidebar-w: 340px;          /* admin inbox sidebar */
+  --header-h: 64px;
+}
+
+/* ============================================================================
+   DARK THEME — the hero. Cool, navy-tinted neutrals.
+   ========================================================================== */
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* Surfaces (navy-tinted ramp) */
+  --surface-0: #04152a;   /* app canvas */
+  --surface-1: #082038;   /* panels, cards, sidebar */
+  --surface-2: #0e2a47;   /* raised: inputs, hover, message bubbles */
+  --surface-3: #16365a;   /* highest: menus, active row, popovers */
+  --surface-sunken: #02101f; /* wells, code, conversation backdrop */
+
+  /* Borders & hairlines */
+  --border: #1c3a5e;
+  --border-strong: #284f78;
+  --hairline: rgba(255,255,255,0.06);
+
+  /* Text */
+  --text: #e9f1fa;        /* primary */
+  --text-muted: #9db3ca;  /* secondary */
+  --text-faint: #647e99;  /* tertiary / labels (spec gray, cool) */
+  --text-on-accent: #ffffff;
+  --text-on-yellow: #1a1303;
+
+  /* Blue — identity */
+  --blue: #34abe2;
+  --blue-strong: #209dd7;
+  --blue-ink: #bfe6f8;        /* blue text on dark */
+  --blue-soft: rgba(40, 168, 224, 0.14);
+  --blue-line: rgba(40, 168, 224, 0.40);
+
+  /* Yellow — the spark / human-in-the-loop / attention / focus */
+  --yellow: #f2b822;
+  --yellow-strong: #ecad0a;
+  --yellow-ink: #f6cf63;
+  --yellow-soft: rgba(236, 173, 10, 0.14);
+  --yellow-line: rgba(236, 173, 10, 0.45);
+
+  /* Purple — primary actions ONLY */
+  --purple: #8a52b0;
+  --purple-strong: #753991;
+  --purple-hover: #9a64bf;
+  --purple-soft: rgba(138, 82, 176, 0.18);
+
+  /* Semantic */
+  --focus-ring: rgba(242, 184, 34, 0.55);   /* yellow spark focus */
+  --danger: #e0654f;
+  --positive: #2fa9e0;     /* "read"/synced uses calm blue, not green */
+
+  /* Role identity (visitor / avatar / human) */
+  --role-visitor: var(--blue-strong);
+  --role-avatar: #3bb6c9;   /* twin = cyan-blue, ties to the avatar image */
+  --role-human: var(--yellow-strong);
+
+  /* Elevation */
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.4);
+  --shadow-md: 0 8px 24px -8px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35);
+  --shadow-lg: 0 24px 60px -16px rgba(0,0,0,0.65), 0 6px 16px rgba(0,0,0,0.4);
+  --glow-blue: 0 0 0 1px var(--blue-line), 0 8px 28px -10px rgba(40,168,224,0.35);
+  --glow-yellow: 0 0 0 1px var(--yellow-line), 0 8px 30px -10px rgba(236,173,10,0.30);
+
+  /* Decorative grid (HUD texture) */
+  --grid-line: rgba(120, 180, 220, 0.045);
+}
+
+/* ============================================================================
+   LIGHT THEME — fully designed. Cool off-white, low chroma.
+   ========================================================================== */
+[data-theme="light"] {
+  color-scheme: light;
+
+  --surface-0: #f3f6fb;
+  --surface-1: #ffffff;
+  --surface-2: #eef3f9;
+  --surface-3: #e3ecf5;
+  --surface-sunken: #eaf0f7;
+
+  --border: #d9e2ed;
+  --border-strong: #bdccdc;
+  --hairline: rgba(3, 33, 71, 0.08);
+
+  --text: #0b2138;        /* near navy */
+  --text-muted: #4c6076;
+  --text-faint: #7d92a6;  /* ≈ spec gray */
+  --text-on-accent: #ffffff;
+  --text-on-yellow: #1a1303;
+
+  --blue: #1487c1;
+  --blue-strong: #209dd7;
+  --blue-ink: #136491;
+  --blue-soft: rgba(32, 157, 215, 0.10);
+  --blue-line: rgba(32, 157, 215, 0.35);
+
+  --yellow: #ecad0a;
+  --yellow-strong: #d39c07;
+  --yellow-ink: #8a6404;
+  --yellow-soft: rgba(236, 173, 10, 0.16);
+  --yellow-line: rgba(236, 173, 10, 0.55);
+
+  --purple: #753991;
+  --purple-strong: #6a3384;
+  --purple-hover: #82449f;
+  --purple-soft: rgba(117, 57, 145, 0.09);
+
+  --focus-ring: rgba(236, 173, 10, 0.6);
+  --danger: #c2492f;
+  --positive: #1689c2;
+
+  --role-visitor: var(--blue-strong);
+  --role-avatar: #1b95a6;
+  --role-human: var(--yellow-strong);
+
+  --shadow-sm: 0 1px 2px rgba(11, 33, 56, 0.06);
+  --shadow-md: 0 10px 28px -12px rgba(11, 33, 56, 0.18), 0 2px 6px rgba(11,33,56,0.06);
+  --shadow-lg: 0 28px 64px -20px rgba(11, 33, 56, 0.26), 0 6px 16px rgba(11,33,56,0.08);
+  --glow-blue: 0 0 0 1px var(--blue-line), 0 10px 30px -12px rgba(32,157,215,0.30);
+  --glow-yellow: 0 0 0 1px var(--yellow-line), 0 10px 30px -12px rgba(236,173,10,0.28);
+
+  --grid-line: rgba(3, 33, 71, 0.035);
+}
