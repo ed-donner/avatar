@@ -67,7 +67,11 @@ export async function streamChat(body: ChatBody, handlers: StreamHandlers): Prom
     body: JSON.stringify(body),
   });
   if (!res.ok || !res.body) {
-    handlers.onError?.(`${res.status} ${res.statusText}`);
+    const message =
+      res.status === 429
+        ? "you're sending messages too quickly — please wait a moment and try again."
+        : `${res.status} ${res.statusText}`;
+    handlers.onError?.(message);
     return;
   }
 

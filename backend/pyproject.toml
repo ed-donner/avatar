@@ -12,6 +12,7 @@ dependencies = [
     "python-dotenv>=1.2.2",
     "requests>=2.34.2",
     "supabase>=2.30.1",
+    "limits>=5.8.0",
 ]
 
 [dependency-groups]

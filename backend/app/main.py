@@ -3,10 +3,13 @@
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
-from fastapi import APIRouter, Cookie, Depends, FastAPI, HTTPException, Response
+from fastapi import APIRouter, Cookie, Depends, FastAPI, HTTPException, Request, Response
 from fastapi.responses import FileResponse
 from fastapi.sse import EventSourceResponse
 from fastapi.staticfiles import StaticFiles
+from limits import parse
+from limits.storage import MemoryStorage
+from limits.strategies import MovingWindowRateLimiter
 
 from app import agent, db, knowledge
 from app.auth import (
@@ -41,6 +44,33 @@ api = APIRouter(prefix="/api")
 admin = APIRouter(prefix="/admin")
 
 
+# ---- Abuse guards (cheap protection for the API key) ----
+
+MAX_MESSAGE_CHARS = 20_000
+TRUNCATION_NOTE = (
+    "[...message truncated as it's too long; ask the visitor to send something more concise]"
+)
+
+# At most 20 messages/minute per conversation_id. In-memory (per process) is enough:
+# OpenRouter caps overall spend, and a browser's requests stick to one machine.
+_rate_limiter = MovingWindowRateLimiter(MemoryStorage())
+_chat_rate = parse("20/minute")
+
+
+def clamp_message(text: str) -> str:
+    """Cap over-long visitor input so a single paste can't run up LLM token spend."""
+    if len(text) <= MAX_MESSAGE_CHARS:
+        return text
+    return text[:MAX_MESSAGE_CHARS] + " " + TRUNCATION_NOTE
+
+
+async def enforce_chat_rate_limit(request: Request) -> None:
+    """Reject more than 20 chat messages per minute from one conversation_id."""
+    body = await request.json()
+    if not _rate_limiter.hit(_chat_rate, str(body.get("conversation_id", ""))):
+        raise HTTPException(status_code=429, detail="Too many messages; please slow down.")
+
+
 # ---- Public API ----
 
 
@@ -64,15 +94,16 @@ def get_conversation(conversation_id: str, after: int | None = None) -> Conversa
 async def _chat_events(request: ChatRequest) -> AsyncIterator[dict]:
     """Drive a chat turn and yield wire events for the SSE stream."""
     settings = get_settings()
+    message = clamp_message(request.message)
     db.insert_message(
         request.conversation_id,
         "visitor",
-        request.message,
+        message,
         conversation_name=request.visitor_name,
         read=False,
     )
 
-    instant = knowledge.instant_faq_number(request.message)
+    instant = knowledge.instant_faq_number(message)
     if instant is not None:
         answer = knowledge.get_instant_answer(instant)
         row = db.insert_message(
@@ -105,7 +136,7 @@ async def _chat_events(request: ChatRequest) -> AsyncIterator[dict]:
             yield event
 
 
-@api.post("/chat", response_class=EventSourceResponse)
+@api.post("/chat", response_class=EventSourceResponse, dependencies=[Depends(enforce_chat_rate_limit)])
 async def chat(request: ChatRequest) -> AsyncIterator[dict]:
     """Stream the Avatar's reply as Server-Sent Events."""
     try:
