@@ -1,0 +1,51 @@
+<!--
+  Avatar embed for edwarddonner.com/avatar  (paste into a WordPress "Custom HTML" block)
+
+  What it does
+  - Pins the app full-bleed just BELOW the site nav (measures the header height, so no top clip).
+  - Fills the viewport on desktop and mobile; overrides the theme's content-column max-width.
+  - Guards against the site nav overflowing sideways on narrow screens (overflow-x: hidden).
+  - Forwards a deep link (?q=2 etc.) from the page URL straight into the embedded app.
+
+  Cookies / "Keep chat"
+  - Set BASE to https://avatar.edwarddonner.com once that subdomain's DNS + Fly cert are live.
+    Same registrable domain as the host page => the chat cookie is first-party and persists.
+  - https://avatar-ed.fly.dev works immediately but is cross-site, so "Keep chat" won't persist
+    in browsers that block third-party cookies (Safari, Firefox, Chrome).
+-->
+<div id="avatar-embed">
+  <iframe id="avatar-frame"
+          title="Ed Donner's Digital Twin"
+          referrerpolicy="strict-origin-when-cross-origin"></iframe>
+</div>
+
+<style>
+  html, body { overflow-x: hidden; }            /* nav can overflow sideways on small screens */
+  #avatar-embed {
+    position: fixed; left: 0;
+    width: 100vw; max-width: none;              /* beat the theme's content-column max-width */
+    margin: 0; padding: 0; z-index: 1;
+    background: #032147;                        /* navy backdrop while the app loads */
+  }
+  #avatar-frame { width: 100%; height: 100%; border: 0; display: block; margin: 0; }
+</style>
+
+<script>
+(function () {
+  var BASE = 'https://avatar.edwarddonner.com'; /* same-site as the host page -> first-party cookies */
+  var box = document.getElementById('avatar-embed');
+  var frame = document.getElementById('avatar-frame');
+
+  frame.src = BASE + '/' + location.search;     /* passthrough: edwarddonner.com/avatar?q=2 */
+
+  function fit() {
+    var header = document.querySelector('header, .wp-site-blocks > header, .site-header');
+    var top = header ? Math.max(0, Math.round(header.getBoundingClientRect().bottom)) : 0;
+    box.style.top = top + 'px';
+    box.style.height = 'calc(100dvh - ' + top + 'px)';
+  }
+  fit();
+  addEventListener('resize', fit);
+  addEventListener('orientationchange', fit);
+})();
+</script>
