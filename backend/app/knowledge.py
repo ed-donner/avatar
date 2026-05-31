@@ -44,8 +44,13 @@ def faq_by_number() -> dict[int, dict]:
 
 
 def faq_list_text() -> str:
-    """Numbered list of FAQ questions for the system prompt."""
-    return "\n".join(f"{faq['faq']}. {faq['question']}" for faq in faqs())
+    """Numbered list of concise FAQ queries (routing phrasings) for the system prompt.
+
+    The list uses the short ``query`` of each entry so the model can match a
+    visitor's question to a number; ``faq_tool`` then returns the full original
+    question and answer.
+    """
+    return "\n".join(f"{faq['faq']}. {faq['query']}" for faq in faqs())
 
 
 def find_faq(number: int) -> str:

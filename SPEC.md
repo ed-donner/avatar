@@ -22,6 +22,8 @@ There's also a Reset chat button, that clears the chat and assigns a new convers
 
 The chat is presented as an instant message experience, but more refined that your typical Chatbot screen. The users message have their initials in a bubble. Responding to the user is either the digital twin, or in some cases the human may respond in addition to the Avatar.
 
+The visitor chat is fully responsive and works great on mobile as well as desktop, in both dark and light mode. The intro screen offers a few example prompts; clicking one submits it immediately. Typing a bare `Qn` (e.g. `Q2`) is an instant-answer shortcut that returns that FAQ with no LLM call; the reply restates the question before the answer (e.g. "**Q2:** ...the question... / ...the answer...").
+
 ### The Human Admin Experience
 
 The human (the owner of this app) can bring up a browser at /admin and enter a password. They are then presented with a dashboard. The left hand sidebar contains a list of conversations (like an email inbox). Most recent on top. They are shown as initials, timestamp, and the beginning of what they said.
@@ -30,13 +32,16 @@ When the human clicks on a message in the left hand side bar, the main panel sho
 
 It's clear in the Sidebar which messages haven't been read yet. If a message needs the Human's involvement (because the Push tool was used to notify the human) then this is clearly identified (until the human has read the message). Arrow keys can be used to efficiently move up and down the messages, and Enter sends a message (Shift+Enter for a multi-line message).
 
+The admin dashboard is also usable on mobile, as a master/detail flow: the inbox fills the screen, tapping a conversation opens its full thread (scrolled to the latest message) with a back control to return to the inbox. The desktop side-by-side layout is unchanged.
+
 ## Implementation Decisions
 
 - The conversations should be stored in a Supabase database, with conversation_id, timestamp, conversation_name (optional), role, content, and anything to track tool use (future expansion)
 - The admin password to use is the environment variable ADMIN_PASSWORD. The backend should have security to ensure that only an authorized user can access other conversations
 - The LLM call should use OpenAI Agents SDK. The instructions should explain the full situation. The user prompt (task) should summarize the full conversation so far (i.e. 1 user prompt to handle all roles, rather than user/assistant, because of the human)
 - The frontend should poll the backend every 10 seconds for any updates from the human (slowing down to every minute after 5 mins have passed with no activity)
-- There is an OpenRouter API key in the .env file. The initial model should be openai/gpt-5.4-mini as specified in MODEL in the .env
+- There is an OpenRouter API key in the .env file. The model is read from `MODEL` in `.env` (currently `openai/gpt-5.4-nano`, a cheap model used for development and testing; see Q&A #2).
+- Conversation reads use a single Supabase round-trip. Opening a thread in admin marks every row read, clears the needs-attention flag, and returns the updated rows in one PostgREST "update ... returning" call; the public conversation fetch derives the conversation name from the rows it already loaded (no extra query). The `messages` table is indexed on `conversation_id` and `created_at` (see the README), keeping these reads fast as volume grows.
 
 ### Use of OpenAI Agents SDK
 
@@ -48,7 +53,7 @@ Be absolutely sure to use current, idiomatic treatment of OpenAI Agents SDK. Use
 - The backend should be FastAPI with a uv project in a folder backend/ and it should serve the static UI in / and /admin
 - The platform should be build as a single Docker container. There should be a scripts/ folder that has a start_mac.sh and stop_mac.sh and start_pc.ps1 and stop_pc.ps1. The start scripts should stop the Docker container if running, then rebuild.
 - The platform can be deployed to fly.io (but we won't do that yet).
-- The folder knowledge/ has information that should be factored in to its knowledge
+- The folder `knowledge/` holds the owner knowledge factored into the system prompt: `knowledge.md` (a rich first-person profile), `style.md` (voice, formatting and safety rules), `faq.jsonl` (the numbered FAQ — each row has a concise `query` for routing plus the full original `question` and `answer`), and `pic.jpg` (the owner photo used for the avatars)
 
 ### The Reference Files
 
@@ -71,6 +76,8 @@ IMPORTANT: Do not have classic LLM tells like gradients, overuse of purple, and 
 Do not have a standard Chatbot style.
 The look must be sharp, compelling, exciting, modern.
 Vector symbols are great where useful; but strictly no emojis.
+
+Both the visitor chat and the admin dashboard must look and work great on mobile as well as desktop (responsive layouts), in dark and light mode.
 
 Ensure that the chat message field takes focus for the user when they bring up the page, and that it regains focus after sending a message (by clicking or by hitting enter).
 
@@ -147,7 +154,7 @@ Clarifications agreed before starting work:
 
 2. **Model.** `.env` currently has `MODEL=openai/gpt-5.4-nano`, ready for testing. The model name is read from the `MODEL` env var (OpenRouter `openai/...` prefix).
 
-3. **Knowledge / RAG.** No vector DB. Inline `summary.txt` + extracted `linkedin.pdf` text into the system prompt, and expose `faq.jsonl` via the numbered `faq_tool` plus the `Qn` instant-answer shortcut. (The old qdrant reference was from another project and has been removed from `next_level.ipynb`.)
+3. **Knowledge / RAG.** No vector DB. The system prompt is composed from `knowledge/knowledge.md` (a rich first-person profile of the owner) and `knowledge/style.md` (the owner's voice plus formatting and safety rules), together with the numbered `faq.jsonl`. Each FAQ row carries a concise `query` (these short phrasings are listed in the prompt so the model can route a visitor's question to a number) alongside the full original `question` and `answer`; both the `faq_tool` and the `Qn` instant-answer shortcut return the full original question and answer. (Earlier drafts inlined `summary.txt` and text extracted from `linkedin.pdf`; those have been superseded by `knowledge.md` + `style.md` and removed, and the `pypdf` dependency with them.)
 
 4. **Human-in-the-loop semantics.** When the human posts from admin, the Avatar does NOT react to it. The human's message is inserted into the thread; the full conversation (including it) is provided to the Avatar the next time the visitor submits something. To the visitor, the human's message renders as a separate bubble using the profile pic, distinguished by image + yellow ring + tint + glow (per the design system).
 

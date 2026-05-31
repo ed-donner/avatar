@@ -64,3 +64,24 @@ def test_faq_list_text_non_empty():
     text = knowledge.faq_list_text()
     assert text
     assert "1." in text
+
+
+def test_every_faq_has_a_query():
+    assert all(faq.get("query") for faq in knowledge.faqs())
+
+
+def test_faq_list_uses_query_not_full_question():
+    by_number = knowledge.faq_by_number()
+    text = knowledge.faq_list_text()
+    one = by_number[1]
+    assert f"1. {one['query']}" in text
+    # the long original question is NOT dumped into the routing list
+    assert one["question"] not in text
+
+
+def test_find_faq_returns_original_question_and_answer():
+    by_number = knowledge.faq_by_number()
+    one = by_number[1]
+    rendered = knowledge.find_faq(1)
+    assert one["question"] in rendered
+    assert one["answer"] in rendered

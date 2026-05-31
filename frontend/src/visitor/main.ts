@@ -295,8 +295,7 @@ sendBtn.addEventListener("click", send);
 for (const chip of suggestRow.querySelectorAll<HTMLButtonElement>(".chip")) {
   chip.addEventListener("click", () => {
     composerInput.value = chip.textContent ?? "";
-    resizeComposer();
-    composerInput.focus();
+    send();
   });
 }
 

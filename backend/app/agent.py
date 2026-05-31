@@ -95,7 +95,8 @@ You only ever speak as the Avatar.
 
 Your faq_tool contains answers to common questions. Below is the list of questions by number.
 If the visitor's question relates to one of these, call faq_tool with the number to retrieve the
-original answer, and reply with that answer preserving its markdown links.
+original answer, and reply with that answer, keeping its Markdown links exactly as written so they
+stay clickable (never flatten a link into a bare URL).
 
 List of questions by number:
 {knowledge.faq_list_text()}

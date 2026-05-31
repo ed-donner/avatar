@@ -119,6 +119,17 @@ Conversations are stored in a single Postgres table in Supabase. Follow these st
 
 That's it - once all the values above are in `.env`, the setup is complete.
 
+## Personalize the twin (the `knowledge/` folder)
+
+The twin's knowledge and voice come from a few files in `knowledge/`, read into the system prompt at runtime. Edit these to make the twin yours:
+
+- **`knowledge.md`** - a rich, first-person profile of you (background, work, courses, skills, personal notes). The main "who I am" source.
+- **`style.md`** - how the twin should sound: voice and personality, formatting rules, and safety/guardrail rules for answering on the public internet.
+- **`faq.jsonl`** - one JSON object per line. Each row has `faq` (number), `question` (the full question), `answer` (the full answer, in markdown), and `query` (a short, precise phrasing used only for routing). The prompt lists the `query` phrasings so the model can match a visitor's question to a number; the FAQ tool and the `Qn` shortcut then return the full original question and answer. Visitors can also type a bare `Qn` (e.g. `Q2`) for an instant answer with no LLM call.
+- **`pic.jpg`** - your photo, used for the human avatar; a robotic variant is used for the twin (see `design-system/docs/avatar-generation.md`).
+
+There is no vector database. (Earlier versions used `summary.txt` and a `linkedin.pdf`; these have been replaced by `knowledge.md` and `style.md`.)
+
 ## Running the app
 
 ### Docker (recommended)
@@ -149,5 +160,7 @@ npm install
 npm run dev
 ```
 
-Open the URL Vite prints. The Vite dev server proxies `/api` to the backend on http://localhost:8000, so run the backend alongside it.
+Open the URL Vite prints. The Vite dev server proxies `/api` to the backend on http://localhost:8000, so run the backend alongside it. The visitor page (`/`) gets hot reload from Vite; `/admin` is proxied to the backend, so to preview admin changes, build the frontend (`npm run build`) and load `http://localhost:8000/admin` from the backend.
+
+The visitor chat and the admin dashboard are both responsive (mobile and desktop, dark and light).
 
