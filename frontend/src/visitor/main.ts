@@ -272,6 +272,15 @@ function resizeComposer(): void {
   composerInput.style.height = `${composerInput.scrollHeight}px`;
 }
 
+/** A short one-line placeholder on phones; the fuller hint on wider screens. */
+const composerMq = window.matchMedia("(max-width: 640px)");
+function applyPlaceholder(): void {
+  composerInput.placeholder = composerMq.matches
+    ? `Message ${ownerName}'s twin…`
+    : `Message ${ownerName}'s twin…  (type "Q2" for an instant answer)`;
+}
+composerMq.addEventListener("change", applyPlaceholder);
+
 composerInput.addEventListener("input", resizeComposer);
 
 composerInput.addEventListener("keydown", (e) => {
@@ -399,7 +408,7 @@ async function boot(): Promise<void> {
       `I'm ${escapeHtml(ownerName)}'s <em>digital twin</em>.<br>Ask me anything &mdash; the real ${escapeHtml(ownerName)} might just chime in.`;
     introBody.textContent =
       `I know ${ownerName}'s background, courses, and curriculum. I can also put you in touch directly.`;
-    composerInput.placeholder = `Message ${ownerName}'s twin…  (type "Q2" for an instant answer)`;
+    applyPlaceholder();
   } catch {
     // config is best-effort; the page still works with default copy.
   }

@@ -1,5 +1,61 @@
 # Frontend Test Plan
 
+## Change verification — mobile ADMIN (master/detail) (2026-05-30)
+
+The admin dashboard is now mobile-friendly as a master/detail flow, driven by
+`data-view="list|thread"` on `.dashboard` (a `@media (max-width:640px)` block shows one
+pane at a time; the attribute is inert on desktop). Tested with Playwright against the
+built `dist` on `:8000` (the `/admin` route is proxied to the backend, so the dev server
+can't serve it). Test data: 5 conversations incl. needs-attention, unread, and a 3-way
+thread. Screenshots captured in dark + light then deleted.
+
+Desktop regression (1280px):
+- [x] Side-by-side layout unchanged: inbox sidebar + thread; first conversation auto-selected.
+- [x] Back button hidden; `Mark resolved` shows its label; thread sub-line shown; owner name + secure-session note present (`thread-actions{margin-left:auto}` keeps actions right).
+- [x] Resizing 320 -> 1280 restores both panes cleanly (the `data-view` set on mobile is inert).
+
+Mobile (390 + 320px, dark + light):
+- [x] Lands on the inbox list (full-width); the thread pane is hidden; nothing is auto-opened (so no conversation is silently marked read).
+- [x] Appbar trimmed to fit (brand + theme toggle + owner avatar; secure-note/divider/owner-name hidden); no horizontal overflow at 320/390.
+- [x] Tap a row -> thread opens full-screen with an `‹ Inbox` back button, conversation identity, and an icon-only resolve button; bubbles wrap.
+- [x] `‹ Inbox` returns to the list (`data-view="list"`, sidebar shown, main hidden); the opened row is now read (attention cleared server-side on open).
+- [x] Opening a conversation scrolls to the latest message (bottom): `setView('thread')` now runs before `renderThread()` so the pane is visible when scroll-to-latest measures `scrollHeight`. Verified on a 16-message thread at 390px (`scrollTop == scrollHeight - clientHeight`) and unchanged on desktop 1280px.
+- [x] Human reply sends and renders as the `YOU · SENT TO VISITOR` bubble; composer clears + refocuses.
+- [x] Theme toggle works on mobile; zero console errors throughout.
+- [x] Adversarial multi-agent review of the admin diff (mobile-css, behavior/regression, design/a11y) => no findings.
+
+## Change verification — mobile visitor chat + Qn restatement (2026-05-30)
+
+Driven with Playwright (MCP) against the Vite dev server (`/api` proxied to the backend),
+screenshots captured at 1280 / 390 / 320 px in dark and light, then deleted per the cleanup
+mandate. Admin is intentionally desktop-only (per the request); only the visitor chat was made
+responsive.
+
+Qn restatement (issue 1):
+- [x] Sending `Q1`/`Q2` renders the avatar bubble as bold `Qn:` + the full restated question,
+      then the answer, with the existing `instant · Qn` badge still shown in the meta row.
+
+Mobile visitor chat (issue 2):
+- [x] Header reflows to two rows below 640px: brand + theme toggle on row 1, name field
+      (flex-grows) + Keep-chat switch + Reset on row 2; theme toggle pinned top-right.
+- [x] Desktop header unchanged after the topbar restructure (brand left; controls + divider +
+      theme grouped right via `margin-left:auto`).
+- [x] No horizontal overflow at 320 / 360 / 390 px (`scrollWidth == clientWidth`); all header
+      controls fit at 320px.
+- [x] Composer: single-line placeholder while empty (no scrollbar / no peeking 2nd line) via
+      `:placeholder-shown { overflow:hidden; white-space:nowrap }`; typed multi-line content still
+      wraps and scrolls (reverts to `pre-wrap`/`auto`, grows to the 160px cap).
+- [x] Mobile placeholder shortened (`Message <owner>'s twin…`, owner from config); keyboard hints
+      hidden, the `Type Qn ...` tip kept and centred.
+- [x] `100dvh` body height + `viewport-fit=cover` + `env(safe-area-inset-*)` padding so the
+      composer is not hidden behind mobile browser chrome / notch.
+- [x] All three roles verified on mobile (dark + light): visitor bubble (right, initials),
+      avatar bubble (incl. the streamed live reply), and the human "<owner> · live" yellow-spark
+      bubble (posted via admin API, polled into the visitor thread).
+- [x] Zero console errors; bubbles wrap cleanly (`overflow-wrap:break-word`).
+- [x] Adversarial multi-agent review of the diff (mobile-css, design/spec, regression dimensions)
+      => no findings.
+
 ## Test Results
 
 Method: Playwright (MCP) driven against the running app at http://127.0.0.1:8000, screenshots

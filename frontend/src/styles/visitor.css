@@ -2,7 +2,7 @@
    Component classes come from components.css; this file holds page chrome. */
 
 html, body { height: 100%; }
-body { display: flex; flex-direction: column; overflow: hidden; }
+body { height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
 
 /* ---- Top bar ---- */
 .topbar {
@@ -20,7 +20,7 @@ body { display: flex; flex-direction: column; overflow: hidden; }
 .brand-sub { font-size: var(--text-2xs); color: var(--text-faint); font-family: var(--font-mono);
   letter-spacing: var(--tracking-wide); text-transform: uppercase; margin-top: 3px; white-space: nowrap; }
 .switch-label { white-space: nowrap; }
-.topbar-right { display: flex; align-items: center; gap: var(--space-3); }
+.topbar-right { display: flex; align-items: center; gap: var(--space-3); margin-left: auto; }
 .icon-btn { width: 38px; height: 38px; border-radius: var(--radius-md); border: 1px solid var(--border);
   background: var(--surface-1); color: var(--text-muted); display: inline-flex; align-items: center;
   justify-content: center; cursor: pointer; transition: all var(--dur) var(--ease-out); }
@@ -65,3 +65,36 @@ body { display: flex; flex-direction: column; overflow: hidden; }
 
 /* small inline error line under a streamed reply */
 .stream-error { font-size: var(--text-sm); color: var(--danger); padding: 2px 0; }
+
+/* ----------------------------------------------------------------------------
+   Mobile — the visitor chat is fully responsive. (Admin is desktop-only.)
+   The header reflows to two rows: brand + theme on top, the controls below.
+   ------------------------------------------------------------------------- */
+@media (max-width: 640px) {
+  .topbar {
+    height: auto;
+    flex-wrap: wrap;
+    padding: var(--space-3) var(--space-4);
+    padding-top: max(var(--space-3), env(safe-area-inset-top));
+    column-gap: var(--space-2);
+    row-gap: var(--space-2);
+  }
+  .brand { order: 1; }
+  #themeToggle { order: 2; margin-left: auto; }
+  .topbar > .divider-v { display: none; }
+  .topbar-right { order: 3; width: 100%; margin-left: 0; gap: var(--space-2); }
+  .name-field { flex: 1 1 auto; min-width: 0; }
+  .name-field input { width: 100%; }
+
+  .convo-inner { padding: var(--space-5) var(--space-4) var(--space-4); gap: var(--space-5); }
+  .intro h1 { font-size: var(--text-xl); }
+  .intro p { font-size: var(--text-base); }
+
+  .composer-dock {
+    padding: var(--space-3) var(--space-4);
+    padding-bottom: max(var(--space-3), env(safe-area-inset-bottom));
+  }
+  /* Keyboard hints are desktop-only; keep just the Qn tip, centred. */
+  .composer-hint { justify-content: center; margin-top: var(--space-2); }
+  .composer-hint .hint-kbd { display: none; }
+}

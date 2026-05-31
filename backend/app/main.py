@@ -54,11 +54,10 @@ def get_config() -> ConfigResponse:
 def get_conversation(conversation_id: str, after: int | None = None) -> ConversationThread:
     """Full thread (all roles) for restore-from-cookie and visitor polling."""
     rows = db.get_messages(conversation_id, after_id=after)
-    messages = [Message(**row) for row in rows]
     return ConversationThread(
         conversation_id=conversation_id,
-        conversation_name=db.conversation_name_for(conversation_id),
-        messages=messages,
+        conversation_name=db.latest_name(rows),
+        messages=[Message(**row) for row in rows],
     )
 
 
@@ -155,13 +154,11 @@ def admin_list_conversations() -> list[ConversationSummary]:
     dependencies=[Depends(require_admin)],
 )
 def admin_get_conversation(conversation_id: str) -> ConversationThread:
-    """Open a thread: mark read + clear attention, then return it."""
-    db.mark_conversation_read(conversation_id)
-    db.clear_attention(conversation_id)
-    rows = db.get_messages(conversation_id)
+    """Open a thread in one round-trip: mark read + clear attention and return the rows."""
+    rows = db.open_conversation(conversation_id)
     return ConversationThread(
         conversation_id=conversation_id,
-        conversation_name=db.conversation_name_for(conversation_id),
+        conversation_name=db.latest_name(rows),
         messages=[Message(**row) for row in rows],
     )
 

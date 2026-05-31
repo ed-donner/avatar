@@ -213,6 +213,7 @@ body {
   padding: var(--space-3) var(--space-4); border-radius: var(--radius-lg);
   font-size: var(--text-md); line-height: var(--leading-relaxed); color: var(--text);
   border: 1px solid transparent; max-width: 560px; width: fit-content;
+  overflow-wrap: break-word;
 }
 .bubble p { margin: 0 0 0.6em; } .bubble p:last-child { margin-bottom: 0; }
 .bubble a { color: var(--blue-ink); text-decoration: underline; text-underline-offset: 2px;
@@ -288,6 +289,10 @@ body {
   outline: none; max-height: 160px; padding: 8px 4px;
 }
 .composer textarea::placeholder { color: var(--text-faint); }
+/* A long placeholder can wrap on narrow screens; keep it to one clipped line
+   while empty (no scrollbar, no peeking second line). Typed content (no
+   placeholder shown) wraps and scrolls normally. */
+.composer textarea:placeholder-shown { overflow: hidden; white-space: nowrap; }
 
 /* ============================================================================
    INBOX / CONVERSATION LIST (admin)

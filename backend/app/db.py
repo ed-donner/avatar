@@ -75,9 +75,19 @@ def list_conversations() -> list[dict]:
     return summaries
 
 
-def mark_conversation_read(conversation_id: str) -> None:
-    """Mark every row in a conversation as read."""
-    get_client().table(TABLE).update({"read": True}).eq("conversation_id", conversation_id).execute()
+def open_conversation(conversation_id: str) -> list[dict]:
+    """Open a thread in ONE round-trip: mark every row read + clear attention and
+    return the updated rows (PostgREST returns the representation). Rows come back
+    unordered, so sort by id ascending.
+    """
+    result = (
+        get_client()
+        .table(TABLE)
+        .update({"read": True, "needs_attention": False})
+        .eq("conversation_id", conversation_id)
+        .execute()
+    )
+    return sorted(result.data, key=lambda row: row["id"])
 
 
 def clear_attention(conversation_id: str) -> None:
@@ -87,14 +97,6 @@ def clear_attention(conversation_id: str) -> None:
     ).execute()
 
 
-def set_attention(message_id: int) -> None:
-    """Flag one row as needing attention and unread."""
-    get_client().table(TABLE).update({"needs_attention": True, "read": False}).eq(
-        "id", message_id
-    ).execute()
-
-
-def conversation_name_for(conversation_id: str) -> str | None:
-    """Latest non-null conversation_name for a conversation."""
-    rows = get_messages(conversation_id)
+def latest_name(rows: list[dict]) -> str | None:
+    """Latest non-null conversation_name among already-fetched rows (no query)."""
     return next((r["conversation_name"] for r in reversed(rows) if r["conversation_name"]), None)

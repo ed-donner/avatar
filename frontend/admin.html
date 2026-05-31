@@ -2,7 +2,7 @@
 <html lang="en" data-theme="dark">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <title>Avatar &mdash; Admin</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -32,8 +32,9 @@
   </form>
 </div>
 
-<!-- DASHBOARD (shown when authenticated) -->
-<div class="dashboard" id="dashboard" hidden>
+<!-- DASHBOARD (shown when authenticated). data-view drives the mobile
+     master/detail navigation (list <-> thread); ignored on wide screens. -->
+<div class="dashboard" id="dashboard" data-view="list" hidden>
   <header class="appbar">
     <div class="brand">
       <span class="brand-mark" aria-hidden="true">
@@ -94,6 +95,9 @@
       <!-- Active thread view (filled by admin/main.ts) -->
       <div class="thread-view" id="threadView" hidden>
         <div class="thread-head">
+          <button class="btn btn--ghost btn--sm thread-back" id="threadBack" type="button" aria-label="Back to conversations">
+            <svg class="icon icon--sm"><use href="/icons.svg#i-chev-right"/></svg> Inbox
+          </button>
           <div class="thread-id">
             <span class="avatar-initials" id="threadInitials"></span>
             <div class="meta">
@@ -102,8 +106,8 @@
             </div>
           </div>
           <div class="thread-actions">
-            <span class="attn-flag" id="attnFlag" hidden><svg class="icon"><use href="/icons.svg#i-spark"/></svg> Avatar asked for you</span>
-            <button class="btn btn--secondary btn--sm" id="resolveBtn"><svg class="icon icon--sm"><use href="/icons.svg#i-check"/></svg> Mark resolved</button>
+            <span class="attn-flag" id="attnFlag" hidden><svg class="icon"><use href="/icons.svg#i-spark"/></svg> <span class="attn-text">Avatar asked for you</span></span>
+            <button class="btn btn--secondary btn--sm" id="resolveBtn" title="Mark resolved"><svg class="icon icon--sm"><use href="/icons.svg#i-check"/></svg> <span class="btn-label">Mark resolved</span></button>
           </div>
         </div>
 

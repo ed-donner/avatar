@@ -38,9 +38,15 @@ def test_instant_faq_number_non_matches():
     assert knowledge.instant_faq_number("hello Q2") is None
 
 
-def test_get_instant_answer():
-    answer = knowledge.get_instant_answer(2)
-    assert answer == knowledge.faq_by_number()[2]["answer"]
+def test_get_instant_answer_restates_question_and_answer():
+    faq = knowledge.faq_by_number()[2]
+    reply = knowledge.get_instant_answer(2)
+    assert reply.startswith(f"**Q2:** {faq['question']}")
+    assert faq["answer"] in reply
+
+
+def test_get_instant_answer_unknown():
+    assert "not found" in knowledge.get_instant_answer(9999).lower()
 
 
 def test_faq_list_text_non_empty():

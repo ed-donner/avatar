@@ -3,7 +3,7 @@
    Component classes come from components.css; this file holds page chrome. */
 
 html, body { height: 100%; }
-body { overflow: hidden; }
+body { height: 100dvh; overflow: hidden; }
 
 /* The [hidden] attribute must win over the display rules below (JS toggles it on
    #loginGate, #dashboard, #threadEmpty, #threadView, #attnFlag, #loginError). */
@@ -79,7 +79,10 @@ body { overflow: hidden; }
 .thread-id .meta { display: flex; flex-direction: column; gap: 2px; }
 .thread-id .meta .name { font-weight: 700; font-size: var(--text-base); }
 .thread-id .meta .sub { font-family: var(--font-mono); font-size: var(--text-2xs); color: var(--text-faint); }
-.thread-actions { display: flex; align-items: center; gap: var(--space-2); }
+.thread-actions { display: flex; align-items: center; gap: var(--space-2); margin-left: auto; }
+/* Back-to-inbox button: mobile-only (shown in the media query below). */
+.thread-back { display: none; }
+.thread-back .icon { transform: rotate(180deg); }
 .attn-flag { display: inline-flex; align-items: center; gap: 6px; font-size: var(--text-xs); font-weight: 600;
   color: var(--yellow-ink); background: var(--yellow-soft); border: 1px solid var(--yellow-line);
   border-radius: var(--radius-pill); padding: 5px 11px; }
@@ -112,3 +115,40 @@ body { overflow: hidden; }
 .login-card .btn { width: 100%; }
 .login-error { width: 100%; font-size: var(--text-sm); color: var(--danger); text-align: center; }
 .login-note { margin-top: var(--space-1); }
+
+/* ----------------------------------------------------------------------------
+   Mobile — the admin becomes a master/detail flow: scroll the inbox, tap a row
+   to open its thread full-screen, "Inbox" button to go back. Driven by
+   data-view on .dashboard (set by admin/main.ts).
+   ------------------------------------------------------------------------- */
+@media (max-width: 640px) {
+  /* App bar trimmed to fit a phone. */
+  .appbar { padding: 0 var(--space-3); gap: var(--space-2); }
+  .appbar .secure-note, .appbar .divider-v { display: none; }
+  .owner-chip { padding: 4px; }
+  .owner-chip #ownerName { display: none; }
+
+  /* One pane at a time. */
+  .workspace { grid-template-columns: 1fr; }
+  .sidebar { border-right: none; }
+  .dashboard[data-view="thread"] .sidebar { display: none; }
+  .dashboard[data-view="list"] .main { display: none; }
+
+  /* Thread header: reveal the back button, compact the actions to icons. */
+  .thread-back { display: inline-flex; }
+  .thread-head { padding: var(--space-3) var(--space-4); gap: var(--space-2); }
+  .thread-id { flex: 1 1 auto; min-width: 0; }
+  .thread-id .meta { min-width: 0; }
+  .thread-id .meta .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .thread-id .meta .sub { display: none; }
+  #resolveBtn .btn-label, .attn-flag .attn-text { display: none; }
+
+  .thread-inner { padding: var(--space-4) var(--space-4) var(--space-3); gap: var(--space-5); }
+  .admin-composer-dock {
+    padding: var(--space-3) var(--space-4);
+    padding-bottom: max(var(--space-3), env(safe-area-inset-bottom));
+  }
+  .kbd-hints { display: none; }
+
+  .login-card { padding: var(--space-7) var(--space-5); }
+}

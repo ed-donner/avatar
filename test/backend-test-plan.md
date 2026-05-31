@@ -1,5 +1,40 @@
 # Backend Test Plan
 
+## Change verification — admin open latency (2026-05-30)
+
+Opening an admin conversation felt slow (~0.5-1s). Root cause (measured, not guessed):
+`admin_get_conversation` made FOUR sequential Supabase round-trips — `mark_conversation_read`
+(UPDATE), `clear_attention` (UPDATE), `get_messages` (SELECT), and `conversation_name_for`
+(a second full SELECT just for the name). Each round-trip is ~110-130ms of network latency to
+the hosted instance (the queries themselves are sub-ms; DB size is irrelevant), so ~490ms total.
+
+Fix: collapse to ONE round-trip via PostgREST's default `return=representation` on UPDATE.
+- New `db.open_conversation(cid)`: a single `update({read:true, needs_attention:false})` filtered
+  by conversation_id that RETURNS the updated rows; sorted by id (PostgREST returns them unordered).
+- `admin_get_conversation` uses it and derives the name in-memory via `db.latest_name(rows)`.
+- Public `get_conversation` also dropped its redundant `conversation_name_for` re-SELECT, deriving
+  the name from the rows it already fetched (the visitor never uses the thread-level name).
+- Removed now-unused `db.mark_conversation_read` and `db.conversation_name_for`; `clear_attention`
+  stays (used by `/resolve`).
+
+- [x] `uv run pytest -m "not llm" -q` => 31 passed, 2 deselected (incl. `test_open_conversation_clears_unread_and_attention`).
+- [x] Measured: old sequence ~490ms (4 round-trips) -> new ~120ms (1 round-trip), confirmed via direct timing, a curl of the endpoint, and a browser `fetch` (~104-133ms).
+- [x] Correctness verified end-to-end: rows returned ordered-by-id, `conversation_name` derived correctly, all rows `read` + attention cleared by the single UPDATE; thread renders identically in the admin UI.
+- [x] Adversarial multi-agent review of the diff (correctness, efficiency/data, dead-code/API) => no findings.
+
+## Change verification — Qn restatement (2026-05-30)
+
+`get_instant_answer()` now restates the question before the answer
+(`**Qn:** <question>\n\n<answer>`) so a terse "Qn" reply has context; the
+unknown-number path still returns the "not found" message. Verified:
+
+- [x] `uv run pytest tests/test_knowledge.py -q` => all pass, incl. the new
+      `test_get_instant_answer_restates_question_and_answer` and `test_get_instant_answer_unknown`.
+- [x] `uv run pytest -m "not llm" -q` => 31 passed, 2 deselected (no regressions).
+- [x] Live SSE via curl: `Q1` streams a `token` whose text begins
+      `**Q1:** In what order/sequence should I take Ed Donner's AI courses?...` then the answer.
+- [x] Adversarial multi-agent review of the diff (backend dimension) => no findings.
+
 ## Test Results
 
 Method: ran the pytest suite from `backend/`. `uv run pytest -m "not llm" -q` => 30 passed

@@ -2,7 +2,7 @@
 <html lang="en" data-theme="dark">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <title>Avatar</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -36,12 +36,12 @@
       <span class="switch-label">Keep chat</span>
     </label>
     <button class="btn btn--ghost btn--sm" id="resetBtn"><svg class="icon icon--sm"><use href="/icons.svg#i-reset"/></svg> Reset</button>
-    <span class="divider-v"></span>
-    <button class="icon-btn" id="themeToggle" title="Toggle light / dark">
-      <svg class="icon icon--sm theme-moon"><use href="/icons.svg#i-moon"/></svg>
-      <svg class="icon icon--sm theme-sun" style="display:none"><use href="/icons.svg#i-sun"/></svg>
-    </button>
   </div>
+  <span class="divider-v"></span>
+  <button class="icon-btn" id="themeToggle" title="Toggle light / dark">
+    <svg class="icon icon--sm theme-moon"><use href="/icons.svg#i-moon"/></svg>
+    <svg class="icon icon--sm theme-sun" style="display:none"><use href="/icons.svg#i-sun"/></svg>
+  </button>
 </header>
 
 <main class="chat">
@@ -69,10 +69,10 @@
         <button class="btn-send" id="sendBtn" title="Send (Enter)"><svg class="icon"><use href="/icons.svg#i-send"/></svg></button>
       </div>
       <div class="composer-hint">
-        <span><span class="kbd">Enter</span> to send</span>
-        <span class="sep"></span>
-        <span><span class="kbd">Shift</span>+<span class="kbd">Enter</span> for a new line</span>
-        <span class="sep"></span>
+        <span class="hint-kbd"><span class="kbd">Enter</span> to send</span>
+        <span class="sep hint-kbd"></span>
+        <span class="hint-kbd"><span class="kbd">Shift</span>+<span class="kbd">Enter</span> for a new line</span>
+        <span class="sep hint-kbd"></span>
         <span>Type <strong style="color:var(--blue-ink)">Qn</strong> for an instant FAQ answer</span>
       </div>
     </div>

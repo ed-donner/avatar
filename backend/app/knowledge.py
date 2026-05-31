@@ -69,8 +69,12 @@ def instant_faq_number(message: str) -> int | None:
 
 
 def get_instant_answer(number: int) -> str:
-    """The raw answer markdown for a FAQ number, for direct display."""
+    """The visitor-facing reply for a 'Qn' shortcut.
+
+    Restates the question (so the terse 'Qn' has context) and then gives the
+    answer, e.g. '**Q3:** ...question...\\n\\n...answer...'.
+    """
     faq = faq_by_number().get(number)
     if not faq:
         return "That question number was not found in the FAQ."
-    return faq["answer"]
+    return f"**Q{number}:** {faq['question']}\n\n{faq['answer']}"

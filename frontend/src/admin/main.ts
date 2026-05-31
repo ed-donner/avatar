@@ -57,6 +57,12 @@ const state = {
 
 const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
 
+/** Mobile shows one pane at a time (master/detail); desktop ignores data-view. */
+const mobileMq = window.matchMedia("(max-width: 640px)");
+function setView(view: "list" | "thread"): void {
+  $("dashboard").dataset.view = view;
+}
+
 function showDashboard(): void {
   $("loginGate").hidden = true;
   $("dashboard").hidden = false;
@@ -229,7 +235,16 @@ async function selectConversation(id: string): Promise<void> {
     local.needs_attention = false;
   }
   renderInbox();
+  // Switch to the thread pane BEFORE rendering: on mobile the pane is hidden
+  // until now, and scroll-to-latest needs it visible to measure scrollHeight.
+  setView("thread");
   renderThread();
+}
+
+// ---- Back to inbox (mobile master/detail) ----
+
+function wireBack(): void {
+  $("threadBack").addEventListener("click", () => setView("list"));
 }
 
 // ---- Arrow-key navigation ----
@@ -328,10 +343,15 @@ async function startDashboard(): Promise<void> {
   wireComposer();
   wireResolve();
   wireArrowKeys();
+  wireBack();
 
   state.conversations = await listConversations();
   renderInbox();
-  if (state.conversations.length) await selectConversation(state.conversations[0].conversation_id);
+  // On a phone, land on the inbox; don't auto-open (which would mark a thread
+  // read). On wider screens keep the side-by-side auto-selection.
+  if (!mobileMq.matches && state.conversations.length) {
+    await selectConversation(state.conversations[0].conversation_id);
+  }
   startPolling();
 }
 
