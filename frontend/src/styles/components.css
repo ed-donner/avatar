@@ -38,12 +38,22 @@ body {
   letter-spacing: var(--tracking-tight); color: var(--text); }
 .display--italic { font-style: italic; }
 
-/* ---- HUD grid texture (decorative bg) ---- */
-.hud-grid {
-  background-image:
-    linear-gradient(var(--grid-line) 1px, transparent 1px),
-    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
-  background-size: 44px 44px;
+/* ---- HUD texture (decorative bg) ----
+   A fine field of small registration-mark crosses, drawn as a fixed, masked
+   overlay so the mark colour follows the theme (--grid-line). A more refined,
+   distinctive take on a blueprint grid. (Previous look: a 44px line grid via
+   two linear-gradients of --grid-line — restore that to revert.) */
+.hud-grid::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: var(--grid-line);
+  -webkit-mask-image: var(--grid-mark);
+  mask-image: var(--grid-mark);
+  -webkit-mask-size: 44px 44px;
+  mask-size: 44px 44px;
 }
 
 /* ============================================================================

@@ -421,6 +421,19 @@ async function boot(): Promise<void> {
   }
 
   schedulePoll(FAST);
+
+  // Deep link: ?q=N immediately submits "QN" (e.g. /?q=2 -> instant FAQ answer).
+  // Works for the page's own URL, including when embedded in an iframe whose src
+  // carries the parameter. The param is then removed so a reload won't resubmit.
+  const qParam = new URLSearchParams(location.search).get("q");
+  if (qParam) {
+    const n = qParam.replace(/^[qQ]/, "");
+    if (/^\d{1,2}$/.test(n)) {
+      history.replaceState(null, "", location.pathname);
+      composerInput.value = `Q${n}`;
+      send();
+    }
+  }
 }
 
 void boot();

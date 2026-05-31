@@ -82,6 +82,10 @@
   --container-chat: 760px;     /* visitor conversation column */
   --sidebar-w: 340px;          /* admin inbox sidebar */
   --header-h: 64px;
+
+  /* HUD background texture: a small "registration mark" cross, tiled and masked
+     so its colour follows the theme's --grid-line. (A refined take on a grid.) */
+  --grid-mark: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='44'%20height='44'%3E%3Ccircle%20cx='22'%20cy='22'%20r='3'%20fill='none'%20stroke='%23fff'%20stroke-width='1'/%3E%3C/svg%3E");
 }
 
 /* ============================================================================
