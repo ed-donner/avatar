@@ -3,6 +3,17 @@
 from app import knowledge
 
 
+def test_knowledge_text_loads():
+    text = knowledge.knowledge_text()
+    assert text.strip()
+    assert "Ed Donner" in text
+
+
+def test_style_text_loads():
+    text = knowledge.style_text()
+    assert text.strip()
+
+
 def test_faqs_load():
     faqs = knowledge.faqs()
     assert len(faqs) > 0

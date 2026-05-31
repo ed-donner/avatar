@@ -1,4 +1,4 @@
-"""Knowledge sources: owner summary, LinkedIn text, and the numbered FAQ.
+"""Knowledge sources: the owner profile, response style, and the numbered FAQ.
 
 Provides the system-prompt building blocks plus the instant-answer (Qn)
 shortcut that bypasses the language model.
@@ -8,27 +8,21 @@ import json
 import re
 from functools import lru_cache
 
-from pypdf import PdfReader
-
 from app.config import get_settings
 
 INSTANT_RE = re.compile(r"^q(\d{1,2})$", re.IGNORECASE)
 
 
 @lru_cache
-def summary_text() -> str:
-    """The owner summary blurb."""
-    path = get_settings().knowledge_dir / "summary.txt"
-    return path.read_text(encoding="utf-8")
+def knowledge_text() -> str:
+    """The owner profile (knowledge.md), included in the system prompt."""
+    return (get_settings().knowledge_dir / "knowledge.md").read_text(encoding="utf-8")
 
 
 @lru_cache
-def linkedin_text() -> str:
-    """Extracted text of the owner's LinkedIn PDF."""
-    path = get_settings().knowledge_dir / "linkedin.pdf"
-    reader = PdfReader(str(path))
-    parts = [page.extract_text() for page in reader.pages]
-    return "".join(part for part in parts if part)
+def style_text() -> str:
+    """The response style, voice and safety guidance (style.md)."""
+    return (get_settings().knowledge_dir / "style.md").read_text(encoding="utf-8")
 
 
 @lru_cache
