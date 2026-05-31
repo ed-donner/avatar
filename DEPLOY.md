@@ -2,6 +2,8 @@
 
 How to deploy Avatar to [fly.io](https://fly.io) as a single container, run it in production, and verify it. Nothing here is created automatically — the deployment artifacts live in `scripts/` (see below) and you deploy with `scripts/deploy.sh`.
 
+> **A reference deployment is already live** at `https://avatar-ed.fly.dev` (custom domain `https://avatar.edwarddonner.com`). The identifiers below — app `avatar-ed`, region `sjc`, domain `avatar.edwarddonner.com` — are that owner's. **To stand up your own**, pick a globally-unique Fly app name and a region near your Supabase DB, then change them in two places: `APP="..."` in `scripts/deploy.sh` and `app = "..."` / `primary_region = "..."` in `scripts/fly.toml` (keep the two app names in sync). Read every `-a avatar-ed`, `avatar-ed.fly.dev`, and `*.edwarddonner.com` below as `<your-app>` / `<your-domain>` placeholders.
+
 | | |
 |---|---|
 | **App** | `avatar-ed` → `https://avatar-ed.fly.dev` |
@@ -118,7 +120,7 @@ Set as **Fly secrets** (sensitive, pulled from `.env` by `deploy.sh`):
 
 Notes:
 - **`SESSION_SECRET`** (now in `.env`) signs the admin session cookie. Setting it explicitly means rotating `ADMIN_PASSWORD` later won't unexpectedly invalidate the session-secret derivation. Use a long random value.
-- **`MODEL`** is whatever is in `.env` (currently `openai/gpt-5.4-nano`, the cheap dev/test model). Decide if production should use a stronger model (e.g. `openai/gpt-5.4-mini`) and set it in `.env` before deploying, or update it later with `fly secrets set -a avatar-ed MODEL=openai/gpt-5.4-mini`.
+- **`MODEL`** is whatever is in `.env`. For production, set `MODEL=openai/gpt-5.4-mini` before deploying (this is what the reference deployment runs); `openai/gpt-5.4-nano` is the cheaper dev/test model and the code default. You can change it later with `fly secrets set -a <your-app> MODEL=openai/gpt-5.4-mini`.
 - Secrets can be set/changed any time: `fly secrets set -a avatar-ed KEY=value` (triggers a rolling restart). View names with `fly secrets list -a avatar-ed` (values are never shown).
 
 ## 4. Deploy
@@ -135,6 +137,8 @@ It creates the app if needed, stages secrets, and deploys 1 machine to `sjc`. Fo
 fly scale count 2 -a avatar-ed     # min_machines_running=1 keeps 1 warm; soft_limit balances across both
 ```
 
+Note: the per-conversation rate limit (20 messages/minute) is held in memory **per machine**, so with more than one machine the effective limit is per machine rather than global. With a single always-on machine (the default here) it is exactly 20/min.
+
 ## 5. Testing (post-deploy smoke)
 
 Run against `https://avatar-ed.fly.dev`. Use `MODEL=openai/gpt-5.4-nano` for cheap test calls if you like, and clean up test data afterwards.
@@ -149,6 +153,7 @@ Run against `https://avatar-ed.fly.dev`. Use `MODEL=openai/gpt-5.4-nano` for che
 - [ ] Contact-capture flow ("I'd like to get in touch", give an email) fires a **Pushover** notification.
 - [ ] In DevTools, the admin session cookie has the **`Secure`** flag (confirms `COOKIE_SECURE=1`).
 - [ ] `fly logs -a avatar-ed` shows no errors during the above.
+- [ ] Abuse guards work: a >20,000-character message is truncated (note appended), and a 21st message within a minute on one conversation returns HTTP 429 with the slow-down message (no model call).
 - [ ] Clean up: delete the test conversation threads from Supabase and any screenshots.
 
 ## 6. Success criteria
@@ -159,15 +164,32 @@ Deployment is successful when:
 - Secrets are configured via Fly (never baked into the image); the admin cookie is `Secure`.
 - Logs are clean and the admin "open conversation" feels snappy (DB round-trips are fast from `sjc`).
 
-## 7. Custom domain (recommended next step)
+## Abuse guards (built in)
 
-Map a subdomain of your site to the app:
+Two cheap protections for your OpenRouter key are enforced in the backend, with no configuration:
 
-```bash
-fly certs add avatar.edwarddonner.com -a avatar-ed   # then add the shown DNS records
-```
+- Visitor messages longer than 20,000 characters are truncated (with a note appended) before being stored or sent to the model.
+- Each `conversation_id` is limited to 20 messages/minute; excess requests get HTTP 429 *before* any LLM call, and the visitor UI shows a friendly slow-down message.
 
-This is also what makes **iframe embedding** clean: serving the app from `avatar.edwarddonner.com` (same site as `edwarddonner.com`) keeps the "Keep chat" cookie **first-party**, avoiding third-party-cookie blocking. The host page then passes the deep link through to the iframe, e.g. `edwarddonner.com/avatar?q=2` → set the iframe `src` to `https://avatar.edwarddonner.com/?q=2` (server-side in a template/shortcode, or a few lines of JS on the host page) and the embedded app answers Q2 on load. See SPEC.md "Tech stack decisions" for the iframe param-passing notes and the `frame-ancestors` guidance.
+The rate limit is in-memory per machine (see the scale-out note in section 4): one always-on machine gives exactly 20/min per conversation; more than one machine gives 20/min per conversation per machine. Your OpenRouter account limits remain the overall backstop.
+
+## 7. Custom domain (optional)
+
+Mapping the app to your own domain is optional — `https://<your-app>.fly.dev` works on its own. A subdomain of your site is worth it mainly for clean **iframe embedding**: serving the app from `avatar.<yourdomain>` (the same registrable domain as the host page) keeps the "Keep chat" cookie **first-party**, avoiding third-party-cookie blocking.
+
+1. Request the certificate:
+
+   ```bash
+   fly certs add avatar.<yourdomain> -a <your-app>
+   ```
+
+2. Add a **CNAME** record at your DNS provider, pointing `avatar` at the Fly hashed target shown by `fly certs show avatar.<yourdomain> -a <your-app>` (e.g. `pq9wl1k.<your-app>.fly.dev`). Prefer this CNAME over the A/AAAA records Fly also lists: the app's IPv4 is a *shared* Fly address (not exclusively yours), and a CNAME automatically tracks any Fly IP change. Use a short TTL (~300s) during setup so corrections propagate quickly.
+
+   - If your domain is behind a **Cloudflare proxy**, set the record to **DNS-only (grey cloud)** and add the `_fly-ownership` TXT record Fly provides, otherwise the Let's Encrypt cert will not issue.
+
+3. Watch issuance with `fly certs check avatar.<yourdomain> -a <your-app>`. Once DNS propagates, Fly issues the cert automatically and the app is served at `https://avatar.<yourdomain>` over HTTPS.
+
+**Embedding.** A ready-to-paste snippet is in `scripts/wordpress-embed.html` (a WordPress "Custom HTML" block): it pins the app full-bleed just below the site nav, overrides the theme's content-column max-width, guards against horizontal overflow on narrow screens, and forwards `?q=N` from the host page into the iframe. Change two values for your own site — the `BASE` constant (your subdomain, e.g. `https://avatar.<yourdomain>`) and the iframe `title` (your own name). See SPEC.md "Tech stack decisions" for the `frame-ancestors` guidance.
 
 ## 8. Operations
 
