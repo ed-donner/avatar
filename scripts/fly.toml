@@ -26,5 +26,5 @@ primary_region = "sjc"               # closest Fly region to the Supabase us-wes
     grace_period = "10s"
 
 [[vm]]
-  size = "shared-cpu-2x"
-  memory = "1gb"
+  size = "shared-cpu-4x"
+  memory = "2gb"
