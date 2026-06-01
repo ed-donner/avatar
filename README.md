@@ -6,6 +6,8 @@ Interact with a digital version of you
 
 This project is a web application for visitors to the site to interact with a Digital Twin of you. During their interaction, you can personally jump in (via an admin panel) and engage with the visitors direcly.
 
+Video walk-through: https://youtu.be/srlhW4H-Gtg
+
 ## Setup instructions
 
 All secrets live in a single `.env` file in the project root. By the end of this section it should contain:
