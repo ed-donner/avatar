@@ -6,6 +6,8 @@ Interact with a digital version of you
 
 This project is a web application for visitors to the site to interact with a Digital Twin of you. During their interaction, you can personally jump in (via an admin panel) and engage with the visitors direcly.
 
+Video walk-through: https://youtu.be/srlhW4H-Gtg
+
 > **This is the starting point, not the finished app.** This branch contains the specification ([SPEC.md](SPEC.md)), the design system (`design-system/`), your knowledge files (`knowledge/`), and a backend skeleton - everything Claude Code needs to build the product for you. Open this folder in [Claude Code](https://claude.com/claude-code) and ask it to build the app from `SPEC.md`. The **Setup instructions** and **Personalize the twin** sections below you do now, before (or as part of) building. **Everything after that - running, deploying - only applies once the project has been built.**
 
 ## Setup instructions
