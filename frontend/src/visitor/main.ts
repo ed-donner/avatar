@@ -342,12 +342,26 @@ resetBtn.addEventListener("click", () => {
 
 // ---- Polling for async human messages ----
 
+// Poll cadence ladder: fast right after activity, easing as the chat goes quiet,
+// to reduce server load. "Activity" = a message sent or a human message received.
 const FAST = 10_000;
-const SLOW = 60_000;
-const IDLE_THRESHOLD = 5 * 60_000;
+const POLL_TIERS = [
+  { idleAfter: 60 * 60_000, delay: 5 * 60_000 }, // quiet 1h  -> every 5 min
+  { idleAfter: 10 * 60_000, delay: 2 * 60_000 }, // quiet 10m -> every 2 min
+  { idleAfter: 2 * 60_000, delay: 30_000 },      // quiet 2m  -> every 30 s
+];
 
 let pollTimer: number | undefined;
 let lastActivity = Date.now();
+
+/** Delay until the next poll, based on how long since the last activity. */
+function pollDelay(): number {
+  const idle = Date.now() - lastActivity;
+  for (const tier of POLL_TIERS) {
+    if (idle >= tier.idleAfter) return tier.delay;
+  }
+  return FAST;
+}
 
 function resetPolling(): void {
   lastActivity = Date.now();
@@ -373,8 +387,7 @@ async function poll(): Promise<void> {
       // transient network error; keep polling on the next tick.
     }
   }
-  const idle = Date.now() - lastActivity > IDLE_THRESHOLD;
-  schedulePoll(idle ? SLOW : FAST);
+  schedulePoll(pollDelay());
 }
 
 // ---- Boot ----
@@ -424,17 +437,23 @@ async function boot(): Promise<void> {
 
   schedulePoll(FAST);
 
-  // Deep link: ?q=N immediately submits "QN" (e.g. /?q=2 -> instant FAQ answer).
-  // Works for the page's own URL, including when embedded in an iframe whose src
-  // carries the parameter. The param is then removed so a reload won't resubmit.
-  const qParam = new URLSearchParams(location.search).get("q");
-  if (qParam) {
-    const n = qParam.replace(/^[qQ]/, "");
-    if (/^\d{1,2}$/.test(n)) {
-      history.replaceState(null, "", location.pathname);
-      composerInput.value = `Q${n}`;
-      send();
-    }
+  // Deep links submit a message on arrival, then drop the param so a reload won't
+  // resubmit. ?q=N sends "QN" (e.g. /?q=2 -> instant FAQ answer); ?m=... sends free
+  // text (e.g. /?m=whats+the+price -> asks the avatar). A valid ?q wins over ?m.
+  // Both ride the page's own URL, including when embedded in an iframe whose src
+  // carries the query string.
+  const params = new URLSearchParams(location.search);
+  const qParam = params.get("q");
+  const mParam = params.get("m");
+  const qn = qParam ? qParam.replace(/^[qQ]/, "") : "";
+  if (qParam && /^\d{1,2}$/.test(qn)) {
+    history.replaceState(null, "", location.pathname);
+    composerInput.value = `Q${qn}`;
+    send();
+  } else if (mParam && mParam.trim()) {
+    history.replaceState(null, "", location.pathname);
+    composerInput.value = mParam.trim();
+    send();
   }
 }
 

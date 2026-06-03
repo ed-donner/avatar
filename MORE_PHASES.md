@@ -23,11 +23,13 @@ precedes the Instructions / FAQ-editor / Archive admin UI.
 
 ## Phase 1 - Quick visitor-only wins (no DB)
 
-- [ ] 1.1 Polling: replace the 2-tier (10s/60s) loop with the 4-tier ladder
+- [x] 1.1 Polling: replace the 2-tier (10s/60s) loop with the 4-tier ladder
       (10s / 30s@2min / 2min@10min / 5min@1hr); idle resets on received human messages too.
-- [ ] 1.2 `?m=` param: handle in `boot()` alongside `?q=N` (parse -> `replaceState` -> `send()`);
-      `q` wins if both present.
-- [ ] 1.3 OG image: generate `og-avatar.png` (1200x630) in the project root from avatar assets.
+      (`pollDelay()` ladder in `visitor/main.ts`; timing E2E deferred to Phase 9.)
+- [x] 1.2 `?m=` param: handle in `boot()` alongside `?q=N` (parse -> `replaceState` -> `send()`);
+      `q` wins if both present. (Verified live: `?m=` decodes+submits, `?q=N`->"QN", q beats m.)
+- [x] 1.3 OG image: generate `og-avatar.png` (1200x630) in the project root from avatar assets.
+      (1200x630 PNG rendered from the HUD twin portrait with brand fonts/tokens.)
 
 ## Phase 2 - FAQ to Supabase (backend)
 
