@@ -7,6 +7,10 @@ from supabase import Client, create_client
 from app.config import get_settings
 
 TABLE = "messages"
+FAQ_TABLE = "faq"
+
+
+PAGE = 1000  # PostgREST's default (and max) rows per request
 
 
 @lru_cache
@@ -14,6 +18,19 @@ def get_client() -> Client:
     """Cached Supabase client."""
     settings = get_settings()
     return create_client(settings.supabase_url, settings.supabase_key)
+
+
+def _all_rows(table: str) -> list[dict]:
+    """Every row of a table ordered by id, paging past PostgREST's row cap."""
+    client = get_client()
+    rows: list[dict] = []
+    start = 0
+    while True:
+        batch = client.table(table).select("*").order("id").range(start, start + PAGE - 1).execute().data
+        rows.extend(batch)
+        if len(batch) < PAGE:
+            return rows
+        start += PAGE
 
 
 def insert_message(
@@ -50,7 +67,7 @@ def get_messages(conversation_id: str, after_id: int | None = None) -> list[dict
 
 def list_conversations() -> list[dict]:
     """One summary per conversation, most recent first."""
-    rows = get_client().table(TABLE).select("*").order("id").execute().data
+    rows = _all_rows(TABLE)
     grouped: dict[str, list[dict]] = {}
     for row in rows:
         grouped.setdefault(row["conversation_id"], []).append(row)
@@ -100,3 +117,8 @@ def clear_attention(conversation_id: str) -> None:
 def latest_name(rows: list[dict]) -> str | None:
     """Latest non-null conversation_name among already-fetched rows (no query)."""
     return next((r["conversation_name"] for r in reversed(rows) if r["conversation_name"]), None)
+
+
+def list_faqs() -> list[dict]:
+    """All FAQ rows (id, concise, question, answer) ordered by id."""
+    return get_client().table(FAQ_TABLE).select("*").order("id").execute().data

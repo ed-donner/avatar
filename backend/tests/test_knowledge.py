@@ -1,6 +1,10 @@
-"""Tests for the knowledge module: FAQ loading, lookup, and instant answers."""
+"""Tests for the knowledge module: FAQ loading, lookup, and instant answers.
 
-from app import knowledge
+FAQ now comes from the Supabase faq table (seeded via scripts.seed_faq), so
+these tests require the table to be populated.
+"""
+
+from app import db, knowledge
 
 
 def test_knowledge_text_loads():
@@ -18,7 +22,25 @@ def test_faqs_load():
     faqs = knowledge.faqs()
     assert len(faqs) > 0
     first = faqs[0]
-    assert {"faq", "question", "answer"} <= set(first)
+    assert {"faq", "question", "answer", "query"} <= set(first)
+
+
+def test_faqs_come_from_db_table():
+    """knowledge.faqs() reflects the faq table, with id->faq and concise->query."""
+    rows = db.list_faqs()
+    assert len(rows) == len(knowledge.faqs())
+    by_number = knowledge.faq_by_number()
+    first_row = rows[0]
+    mapped = by_number[first_row["id"]]
+    assert mapped["query"] == first_row["concise"]
+    assert mapped["question"] == first_row["question"]
+
+
+def test_reload_faqs_refreshes_cache():
+    """reload_faqs() clears the cache so a later edit would be picked up."""
+    knowledge.faqs()  # warm the cache
+    knowledge.reload_faqs()
+    assert knowledge.faqs()  # re-reads without error
 
 
 def test_faq_by_number():

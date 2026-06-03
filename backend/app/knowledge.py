@@ -4,10 +4,10 @@ Provides the system-prompt building blocks plus the instant-answer (Qn)
 shortcut that bypasses the language model.
 """
 
-import json
 import re
 from functools import lru_cache
 
+from app import db
 from app.config import get_settings
 
 INSTANT_RE = re.compile(r"^q(\d{1,2})$", re.IGNORECASE)
@@ -27,10 +27,23 @@ def style_text() -> str:
 
 @lru_cache
 def _load_faqs() -> tuple[list[dict], dict[int, dict]]:
-    path = get_settings().knowledge_dir / "faq.jsonl"
-    faqs = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    """Load FAQs from the Supabase faq table (the source of truth).
+
+    Table columns id/concise are mapped to the module's established faq/query
+    keys so the rest of the code is unchanged. Cached for the hot path; call
+    reload_faqs() after the admin edits the FAQ so the next access re-reads.
+    """
+    faqs = [
+        {"faq": row["id"], "question": row["question"], "answer": row["answer"], "query": row["concise"]}
+        for row in db.list_faqs()
+    ]
     by_number = {faq["faq"]: faq for faq in faqs}
     return faqs, by_number
+
+
+def reload_faqs() -> None:
+    """Drop the cached FAQs so the next access re-reads the table."""
+    _load_faqs.cache_clear()
 
 
 def faqs() -> list[dict]:

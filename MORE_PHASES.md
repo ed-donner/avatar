@@ -33,11 +33,17 @@ precedes the Instructions / FAQ-editor / Archive admin UI.
 
 ## Phase 2 - FAQ to Supabase (backend)
 
-- [ ] 2.1 Fix `faq.jsonl` content: backtick `*_API_KEY` identifiers, reword Q6's bold-on-AI,
-      reword/remove the Q54 & Q25 screenshot notes, audit the rest (typos, Q11/Q60 dup).
-- [ ] 2.2 Seed script: upload fixed jsonl -> `faq` table (`id`=faq, `concise`=query).
-- [ ] 2.3 Repoint `knowledge.py` to read FAQ from the DB (no `lru_cache`); keep jsonl as seed.
-- [ ] 2.4 Update `test_knowledge.py` / `test_agent.py`.
+- [x] 2.1 Fix `faq.jsonl` content: backticked API-key identifiers (Q6/Q12/Q18), reworded Q6's
+      bold-on-AI, removed Q54 & Q25 screenshot notes, fixed Q10 `3.1`1->`3.11`, Q11/Q60 typo,
+      Q50 quadruple-star. (Reviewed and approved.)
+- [x] 2.2 Seed script `scripts/seed_faq.py`: idempotent upsert jsonl -> `faq` table
+      (`id`=faq, `concise`=query). Seeded 61 rows.
+- [x] 2.3 Repoint `knowledge.py` to read FAQ from the DB via `db.list_faqs()` (cached with a
+      `reload_faqs()` invalidation hook for the Phase 5 editor); jsonl kept as seed.
+- [x] 2.4 Updated `test_knowledge.py` (FAQ-from-DB + reload hook). Full suite green (51 passed).
+- [x] 2.5 Bugfix (discovered): `db.list_conversations()` hit PostgREST's 1000-row cap once the
+      messages table exceeded 1000 rows, hiding the newest conversations from admin. Added
+      `db._all_rows()` pagination. Conversations visible went 111 -> 139.
 
 ## Phase 3 - Admin main nav scaffolding
 
