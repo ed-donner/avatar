@@ -147,6 +147,9 @@ activemq-data/
 # SageMath parsed files
 *.sage.py
 
+# Local database backups (safety dumps before archive work)
+backups/
+
 # Environments
 .env
 .envrc

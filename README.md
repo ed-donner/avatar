@@ -198,3 +198,66 @@ Putting the app on your own website is **optional** - the `https://<your-app>.fl
 
 The backend guards your API key automatically, with no configuration: visitor messages longer than 20,000 characters are truncated (with a short note appended) before being stored or sent to the model, and more than 20 messages per minute from a single conversation are rejected (HTTP 429, with a friendly slow-down message in the chat) before any model call is made.
 
+## Setup for MORE requirements
+
+The enhancements in [MORE.md](MORE.md) add three new admin sections - **Archive**, **Instructions**, and **FAQ** - each backed by its own Supabase table. Create them once, the same way you created `messages`: open the **SQL Editor**, paste the SQL below, click **Run**, and choose **Run without RLS** (these tables are only ever reached by the backend's secret key, just like `messages`).
+
+```sql
+-- 1. archive: holds whole conversations moved out of `messages`.
+--    Mirrors messages exactly, but `id` and `created_at` are NOT auto-generated
+--    so a restored conversation round-trips with its original ids and timestamps.
+create table public.archive (
+  id              bigint primary key,
+  conversation_id uuid not null,
+  conversation_name text,
+  role            text not null check (role in ('visitor', 'avatar', 'human')),
+  content         text not null,
+  tool_calls      jsonb,
+  needs_attention boolean not null default false,
+  read            boolean not null default false,
+  created_at      timestamptz not null default now()
+);
+create index archive_conversation_id_idx on public.archive (conversation_id);
+create index archive_created_at_idx on public.archive (created_at desc);
+grant select, insert, update, delete on public.archive to service_role;
+
+-- 2. app_settings: a single row holding the admin's freeform Markdown
+--    "additional instructions" that are appended to the system prompt.
+create table public.app_settings (
+  id           int primary key default 1 check (id = 1),
+  instructions text not null default '',
+  updated_at   timestamptz not null default now()
+);
+insert into public.app_settings (id, instructions) values (1, '')
+  on conflict (id) do nothing;
+grant select, insert, update, delete on public.app_settings to service_role;
+
+-- 3. faq: the editable FAQ, moved out of knowledge/faq.jsonl.
+--    `id` is the FAQ number (the `Qn` shortcut and `?q=N` deep link resolve against it),
+--    so it is set explicitly, not auto-generated. `concise` is the short routing phrase.
+create table public.faq (
+  id       bigint primary key,
+  concise  text not null,
+  question text not null,
+  answer   text not null
+);
+grant select, insert, update, delete on public.faq to service_role;
+```
+
+What the tables are for:
+- `archive` - conversations archived from the inbox; structurally identical to `messages`, so archiving copies a conversation's rows here and deletes them from `messages` (restore reverses it).
+- `app_settings` - one row (`id = 1`) whose `instructions` column holds the Markdown the admin edits under the **Instructions** tab; it is appended to the system prompt after the style section.
+- `faq` - the FAQ rows the admin edits under the **FAQ** tab. The `faq` table becomes the source of truth; `knowledge/faq.jsonl` is kept only as the initial seed/backup.
+
+After creating the tables, the FAQ table is seeded from the (corrected) `knowledge/faq.jsonl` with:
+
+```
+cd backend && uv run python -m scripts.seed_faq
+```
+
+Then re-run the connectivity test - it now also checks the three new tables:
+
+```
+cd backend && uv run pytest tests/test_supabase_connection.py -v
+```
+
