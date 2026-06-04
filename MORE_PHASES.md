@@ -1,12 +1,123 @@
 # MORE.md - Implementation Phases
 
 Incremental plan for the enhancements in [MORE.md](MORE.md). Each phase is independently
-testable; validate before moving on. Work on the `more` branch, commit per phase, never deploy
-(local Docker only). See the MORE.md "Questions and Answers" section for the agreed decisions.
+testable; validate before moving on. Work on the **`more-build`** branch, commit per phase, never
+deploy (the owner deploys; local Docker only). See the MORE.md "Questions and Answers" section for
+the agreed decisions.
 
 **Dependencies:** Phase 0 gates all database-backed work (the owner must run the new README
 DDL after step 0.2). Phase 1 (visitor-only wins + OG image) is independent. Phase 3 (admin nav)
 precedes the Instructions / FAQ-editor / Archive admin UI.
+
+---
+
+## Project Status & Handoff Record  (Phases 0-5 complete; 6-9 remaining)
+
+> Written as a restart/handoff record. If resuming cold, read this whole section first.
+
+### Snapshot
+- **Branch:** `more-build` (NOT `more`; base branch is `main`). Working tree clean.
+- **Done:** Phases 0,1,2,3,4,5. **Remaining:** Phases 6 (Archive), 7 (Download+Total),
+  8 (Web Fetch MCP), 9 (Full E2E & Docker).
+- **Next action:** Phase 6 (Archive) - was about to start; paused here on request to write this record.
+
+### Commits (one per phase, on `more-build`)
+- `a4a5f68` "Fixed doc" - the OWNER's edits to MORE.md (`?m=` query string, Q54 fix) before work began
+- `1fec261` Phase 0 - safety backup, MORE table DDL + connectivity tests
+- `5bdfb92` Phase 1 - polling ladder, ?m= deep link, OG social image
+- `c787659` Phase 2 - move FAQ to Supabase + fix conversation list pagination
+- `b5e9936` Phase 3 - admin main nav scaffolding + fix app-wide icon rendering
+- `da5eea4` Phase 4 - admin-editable additional instructions
+- `1d734fb` Phase 5 - admin FAQ editor (CRUD over the faq table)  **<- current HEAD**
+
+### Deployment state  (IMPORTANT)
+- Production = fly.io app `avatar-ed` (region `sjc`), public at `avatar.edwarddonner.com`
+  (WordPress iframe) and `avatar-ed.fly.dev`. Deploy is owner-driven via `./scripts/deploy.sh`
+  (builds the current checkout, pushes `.env` as Fly secrets, sets `COOKIE_SECURE=1`). **I never deploy.**
+- The owner deployed **once, after Phase 2**, so **production runs Phase 0-2 code** (`c787659`).
+  LIVE today: the conversation-pagination fix, FAQ-served-from-Supabase, the 4-tier visitor polling,
+  the `?m=` deep link, and the OG image.
+- **Phases 3, 4, 5 are committed locally but NOT deployed.** So the live site does NOT yet have:
+  the **icon-rendering fix** (live icons still render as solid silhouettes - see bug #2 below),
+  the admin 4-tab nav, additional-instructions, or the FAQ editor. The owner can deploy whenever;
+  the icon fix + admin features all ship together on the next deploy.
+
+### Environment & key facts
+- **Single Supabase DB (`vsdbgmlilyduqkybcltg`) IS production** - shared by local dev, the test
+  suite, and the live app. Treat ALL data as real; only ever touch throwaway rows you create.
+- Tables: `messages` (original) + `archive`, `app_settings`, `faq` (the owner created these from the
+  README "Setup for MORE requirements" DDL in Phase 0). `archive` mirrors `messages` with an explicit
+  (non-identity) `id` so restores round-trip ids/timestamps. It is currently UNUSED (Phase 6 builds it).
+- `faq`: **61 rows, ids 1-61**, seeded from `knowledge/faq.jsonl` (kept as seed/backup). Source of truth
+  is now the DB; `knowledge.py` reads it cached with `reload_faqs()` invalidation.
+- `app_settings` singleton (`id=1`): `instructions` is currently **empty** ('') - the live prompt is
+  unchanged. (Only Phase 4 code reads it, and Phase 4 isn't deployed.)
+- `.env`: `MODEL=openai/gpt-5.4-mini`, `OWNER_NAME="Ed Donner"`, `ADMIN_PASSWORD` set, Supabase keys set.
+- Conversations backup (Phase 0): `backups/conversations-20260603T222806Z.jsonl`
+  (1150 messages / 139 conversations), gitignored. Re-dump anytime via
+  `uv run --directory backend python -m scripts.backup_conversations`.
+
+### Local run / test gotchas
+- `./scripts/start_mac.sh` builds+runs the container on :8000, BUT the owner's unrelated `tradewars`
+  container occupies :8000. Run avatar on another port instead:
+  `docker run -d --name avatar --env-file .env -p 8001:8000 avatar` (image built by start_mac.sh).
+- For admin E2E without Docker: `cd frontend && npm run build`, then
+  `uv run --directory backend uvicorn app.main:app --port 8010 --app-dir .` (serves built `dist/`,
+  including `/admin`). NOTE: `/admin` is NOT served by the Vite dev server.
+- Container entrypoint runs `uv sync` on boot (first request waits a few seconds).
+- Playwright MCP: `file://` is blocked (serve over http). Native `confirm()` in a page is auto-dismissed
+  by Playwright; to test the FAQ delete, override `window.confirm = () => true` in the page first.
+
+### Problems discovered & fixed (beyond the planned MORE features)
+1. **Conversation-list pagination (Phase 2.5) - pre-existing prod bug, NOW LIVE-FIXED.**
+   `db.list_conversations()` did one unbounded `select` -> PostgREST caps responses at 1000 rows ->
+   once `messages` exceeded 1000 (it's at ~1723), the ~28 newest conversations were invisible in admin
+   (showed 111 of 139). Fixed with `db._all_rows()` pagination (reused later by archive/export).
+   Root cause proven before fixing; shipped in the Phase 2 deploy.
+2. **Icon sprite rendering (Phase 3.3) - pre-existing app-wide bug, FIX NOT YET DEPLOYED.**
+   `frontend/public/icons.svg` shipped with an empty `<defs>`, missing the painting `<style>` that the
+   design-system mockups inline. Every `<use>` icon (visitor + admin) rendered as a solid black
+   silhouette instead of line-art (e.g. the live "Reset" control shows a black dot). Restored the
+   scoped `symbol{fill:none;stroke:currentColor;...} symbol .fill{...}` block in the sprite; verified
+   in Chromium that external `<use>` honours it and that the inline-attr brand logos (LinkedIn/YouTube)
+   are unaffected. Ships on the next deploy.
+3. **Adversarial-review findings, fixed per phase** (each phase ran a multi-agent review workflow):
+   - Phase 3.4: polling re-fetch + desktop auto-select were marking threads read while on a non-
+     conversations section -> gated both on `section==='conversations'`.
+   - Phase 4.4: **HIGH** unsaved additional-instructions were clobbered on tab round-trip -> dirty-guard;
+     **MEDIUM** Cmd/Ctrl+S only worked with the textarea focused -> document-level handler.
+   - Phase 5.5: **MEDIUM** blank FAQ fields accepted by the API -> server-side `min_length` validation;
+     **MEDIUM** edit dialog could clip Save/Cancel on short viewports -> `max-height` + body scroll;
+     **MEDIUM** `Qn`/`?q=N` capped at 2 digits while the editor grows ids past 99 -> widened to 3 digits.
+
+### Testing completed
+- **Backend pytest: 63 passing** (`cd backend && uv run pytest -q`). Tests hit the real Supabase and the
+  LLM (mini) - allowed/cheap per SPEC. Files added/changed: `test_supabase_connection.py` (new-table
+  column checks), `test_instructions.py`, `test_faq_admin.py`, `test_knowledge.py`, `test_agent.py`.
+- **Per-phase Playwright E2E on the real served app** (not just mocks): P1 `?m=`/`?q=`; P2 the actual
+  Docker container - visitor chat SSE stream, `Qn`-from-DB rendering, admin inbox showing all 139; P3
+  nav switching/persistence/mobile/icons; P4 instructions load/save/persist + clobber-guard; P5 FAQ
+  create/edit/delete.
+- **Adversarial review workflows** for Phases 3, 4, 5; findings triaged, fixed, re-verified.
+- **Data-safety, verified after every phase:** all test/E2E data uses throwaway `conversation_id`s /
+  FAQ ids; the `app_settings` singleton is restored to empty; confirmed messages test-rows deleted,
+  `faq` back to 61, `instructions` == ''. Screenshots/artifacts deleted each phase. Only `og-avatar.png`
+  remains in the repo root by design.
+
+### Conventions for resuming (per-phase loop)
+implement incrementally -> `npm run build` (tsc) + `uv run pytest -q` -> Playwright E2E on the real
+served app -> adversarial review workflow (ultracode is ON) -> fix findings + re-verify -> clean up
+test data/screenshots -> tick the boxes in this file -> commit once for the phase (with a
+`Co-Authored-By: Claude Opus 4.8 (1M context)` trailer). Never deploy.
+
+### Notes for the remaining phases
+- **Phase 6 (Archive) is the most destructive** - it deletes rows from `messages` into `archive`.
+  Extra care: only archive throwaway conversations you create; never a real user thread. The 72h
+  bulk-archive must be exercised only against self-created rows. `conftest` cleanup must also purge the
+  `archive` table for test ids. The `archive` table already exists and preserves ids/timestamps.
+- **Known accepted edge (not a bug):** new FAQ ids are `max(id)+1` in app code (fine for a single
+  admin); deleting the highest-numbered FAQ frees that number for reuse, so a previously-shared `?q=N`
+  link could later resolve to different content. Left as-is, flagged to the owner.
 
 ---
 
