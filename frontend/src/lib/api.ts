@@ -5,6 +5,7 @@ import type {
   Config,
   ConversationSummary,
   ConversationThread,
+  Instructions,
   Message,
 } from "./types.ts";
 
@@ -146,4 +147,17 @@ export async function resolveConversation(id: string): Promise<void> {
     method: "POST",
     credentials: "same-origin",
   });
+}
+
+export function getInstructions(): Promise<Instructions> {
+  return fetch("/admin/instructions", adminInit).then((r) => json<Instructions>(r));
+}
+
+export function saveInstructions(instructions: string): Promise<Instructions> {
+  return fetch("/admin/instructions", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
+    body: JSON.stringify({ instructions }),
+  }).then((r) => json<Instructions>(r));
 }

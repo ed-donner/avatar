@@ -155,12 +155,23 @@
       </div>
     </section>
 
-    <!-- Instructions section (built in a later phase) -->
-    <section class="section section--panel" data-section="instructions" id="section-instructions" hidden>
-      <div class="panel-placeholder">
-        <svg class="icon icon--xl"><use href="/icons.svg#i-sliders"/></svg>
-        <h2>Instructions</h2>
-        <p>Extra instructions for the Avatar will be editable here.</p>
+    <!-- Instructions section -->
+    <section class="section section--editor" data-section="instructions" id="section-instructions" hidden>
+      <div class="editor-wrap">
+        <div class="editor-head">
+          <h2>Additional instructions</h2>
+          <p>Markdown appended to the Avatar's system prompt, just after its style guide. Use it for
+            standing guidance or things to emphasise right now. Takes effect on the next message.
+            Leave empty for none.</p>
+        </div>
+        <textarea id="instructionsInput" class="editor-area" spellcheck="false"
+          placeholder="e.g. This week, mention the new Agentic AI course when it's relevant."></textarea>
+        <div class="editor-actions">
+          <span class="editor-status" id="instructionsStatus" aria-live="polite"></span>
+          <button class="btn btn--primary" id="instructionsSave" type="button">
+            <svg class="icon icon--sm"><use href="/icons.svg#i-save"/></svg> Save
+          </button>
+        </div>
       </div>
     </section>
 

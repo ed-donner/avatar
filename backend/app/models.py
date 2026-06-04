@@ -66,3 +66,9 @@ class ConfigResponse(BaseModel):
     """Public configuration surfaced to the frontend."""
 
     owner_name: str
+
+
+class InstructionsBody(BaseModel):
+    """The admin's additional system-prompt instructions (Markdown)."""
+
+    instructions: str

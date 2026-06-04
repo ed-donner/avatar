@@ -35,6 +35,10 @@ export interface Config {
   owner_name: string;
 }
 
+export interface Instructions {
+  instructions: string;
+}
+
 /** SSE wire events streamed from POST /api/chat. */
 export type ChatEvent =
   | { type: "tool"; phase: "called"; tool: string }

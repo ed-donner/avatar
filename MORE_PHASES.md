@@ -59,10 +59,16 @@ precedes the Instructions / FAQ-editor / Archive admin UI.
 
 ## Phase 4 - Additional instructions
 
-- [ ] 4.1 Backend `GET/PUT /admin/instructions` (singleton `app_settings`); inject into the
-      prompt immediately after the style section (fresh read per turn).
-- [ ] 4.2 Instructions tab: textarea editor + save + load existing.
-- [ ] 4.3 Tests.
+- [x] 4.1 Backend `GET/PUT /admin/instructions` (singleton `app_settings` via
+      `db.get_instructions`/`set_instructions`); injected into the prompt immediately after the
+      style section, read fresh per turn (uncached) so edits apply without a restart.
+- [x] 4.2 Instructions tab: monospace Markdown editor + Save (purple primary) + status; loads the
+      saved value on open; Cmd/Ctrl+S to save; dirty-guard so a tab round-trip never loses edits.
+- [x] 4.3 Tests: `test_instructions.py` (401 guards, PUT/GET roundtrip, prompt-injection-after-style,
+      empty-omits-section; a preserve fixture restores + asserts the live singleton). Full suite 56 passed.
+- [x] 4.4 Review fixes (adversarial workflow): HIGH unsaved-edits clobber -> dirty-guard;
+      MEDIUM Cmd+S only-when-textarea-focused -> document-level handler gated to the section;
+      LOWs (case-insensitive shortcut, in-flight save guard, fixture restore assertion).
 
 ## Phase 5 - FAQ editor (admin)
 

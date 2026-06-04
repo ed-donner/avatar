@@ -18,7 +18,7 @@ from agents import (
 from openai import AsyncOpenAI
 from openai.types.responses import ResponseTextDeltaEvent
 
-from app import knowledge
+from app import db, knowledge
 from app.config import get_settings
 from app.models import Message
 from app.push import push
@@ -57,9 +57,16 @@ def push_tool(message: str) -> str:
 
 
 def build_system_prompt() -> str:
-    """Assemble the full multi-way system prompt for the Avatar."""
+    """Assemble the full multi-way system prompt for the Avatar.
+
+    The admin's additional instructions are read fresh from the database on every
+    turn (not cached) and injected right after the style section, so edits in the
+    admin panel take effect on the next message without a restart.
+    """
     settings = get_settings()
     owner = settings.owner_name
+    extra = db.get_instructions().strip()
+    instructions_block = f"# Additional instructions\n\n{extra}\n\n" if extra else ""
     return f"""# Your role
 
 You are the digital twin of {owner}, an AI chatting with visitors on {owner}'s website.
@@ -79,7 +86,7 @@ Match {owner}'s voice and follow these style and safety rules:
 
 {knowledge.style_text()}
 
-# The three-way conversation
+{instructions_block}# The three-way conversation
 
 The transcript may contain three speakers:
 - Visitor: the guest you are talking to.

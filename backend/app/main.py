@@ -26,6 +26,7 @@ from app.models import (
     ConversationSummary,
     ConversationThread,
     HumanMessageRequest,
+    InstructionsBody,
     LoginRequest,
     Message,
 )
@@ -216,6 +217,19 @@ def admin_resolve(conversation_id: str) -> dict:
     """Clear the needs-attention flag for a conversation."""
     db.clear_attention(conversation_id)
     return {"ok": True}
+
+
+@admin.get("/instructions", response_model=InstructionsBody, dependencies=[Depends(require_admin)])
+def admin_get_instructions() -> InstructionsBody:
+    """The current additional system-prompt instructions."""
+    return InstructionsBody(instructions=db.get_instructions())
+
+
+@admin.put("/instructions", response_model=InstructionsBody, dependencies=[Depends(require_admin)])
+def admin_set_instructions(body: InstructionsBody) -> InstructionsBody:
+    """Save the additional system-prompt instructions (appended after the style section)."""
+    db.set_instructions(body.instructions)
+    return InstructionsBody(instructions=body.instructions)
 
 
 app.include_router(api)

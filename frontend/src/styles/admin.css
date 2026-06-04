@@ -57,6 +57,24 @@ body { height: 100dvh; overflow: hidden; }
   font-size: var(--text-xl); color: var(--text-muted); }
 .panel-placeholder p { margin: 0; font-size: var(--text-sm); max-width: 38ch; }
 
+/* ---- Editor sections (Instructions, and FAQ later) ---- */
+.section--editor { display: flex; flex-direction: column; min-height: 0; overflow-y: auto;
+  background: var(--surface-0); }
+.editor-wrap { width: 100%; max-width: 860px; margin: 0 auto; flex: 1; min-height: 0;
+  display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-6); }
+.editor-head h2 { margin: 0 0 var(--space-2); font-family: var(--font-display); font-weight: 600;
+  font-size: var(--text-xl); }
+.editor-head p { margin: 0; color: var(--text-muted); font-size: var(--text-sm); max-width: 72ch; }
+.editor-area { flex: 1; min-height: 260px; resize: vertical; width: 100%;
+  background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-md);
+  padding: var(--space-4); color: var(--text); font-family: var(--font-mono); font-size: var(--text-sm);
+  line-height: 1.6; outline: none; }
+.editor-area:focus { border-color: var(--blue-line); }
+.editor-actions { display: flex; align-items: center; gap: var(--space-3); }
+.editor-status { font-size: var(--text-sm); color: var(--text-faint); margin-right: auto; }
+.editor-status.is-saved { color: var(--positive); }
+.editor-status.is-error { color: var(--danger); }
+
 /* ---- Sidebar ---- */
 .sidebar { display: flex; flex-direction: column; min-height: 0; border-right: 1px solid var(--border);
   background: var(--surface-1); }
@@ -173,6 +191,8 @@ body { height: 100dvh; overflow: hidden; }
     padding-bottom: max(var(--space-3), env(safe-area-inset-bottom));
   }
   .kbd-hints { display: none; }
+
+  .editor-wrap { padding: var(--space-4); }
 
   .login-card { padding: var(--space-7) var(--space-5); }
 }

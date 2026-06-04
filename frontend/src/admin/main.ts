@@ -7,11 +7,13 @@ import "../styles/admin.css";
 import {
   getConfig,
   getConversationAdmin,
+  getInstructions,
   listConversations,
   login,
   me,
   postHumanMessage,
   resolveConversation,
+  saveInstructions,
 } from "../lib/api.ts";
 import type { ConversationSummary, ConversationThread, Message } from "../lib/types.ts";
 import { initTheme, wireThemeToggle } from "../lib/theme.ts";
@@ -81,6 +83,7 @@ function setSection(section: Section): void {
   for (const panel of document.querySelectorAll<HTMLElement>(".sections .section")) {
     panel.hidden = panel.dataset.section !== section;
   }
+  if (section === "instructions") void loadInstructions();
 }
 
 function wireNav(): void {
@@ -340,6 +343,69 @@ function wireResolve(): void {
   });
 }
 
+// ---- Instructions editor ----
+
+// Last value known to be on the server; lets loadInstructions avoid clobbering
+// unsaved edits (textarea differs from this) when the tab is re-opened.
+let instructionsServerValue: string | null = null;
+
+async function loadInstructions(): Promise<void> {
+  const input = $<HTMLTextAreaElement>("instructionsInput");
+  const status = $("instructionsStatus");
+  try {
+    const { instructions } = await getInstructions();
+    const dirty = instructionsServerValue !== null && input.value !== instructionsServerValue;
+    if (!dirty) {
+      input.value = instructions;
+      status.textContent = "";
+      status.className = "editor-status";
+    }
+    instructionsServerValue = instructions;
+  } catch {
+    // a failed load shouldn't clobber whatever is in the editor.
+  }
+  input.focus({ preventScroll: true });
+}
+
+function wireInstructions(): void {
+  const input = $<HTMLTextAreaElement>("instructionsInput");
+  const saveBtn = $<HTMLButtonElement>("instructionsSave");
+  const status = $("instructionsStatus");
+
+  const save = async (): Promise<void> => {
+    if (saveBtn.disabled) return; // a save is already in flight
+    saveBtn.disabled = true;
+    status.textContent = "Saving…";
+    status.className = "editor-status";
+    try {
+      const { instructions } = await saveInstructions(input.value);
+      instructionsServerValue = instructions;
+      status.textContent = "Saved";
+      status.className = "editor-status is-saved";
+    } catch {
+      status.textContent = "Couldn't save — try again";
+      status.className = "editor-status is-error";
+    } finally {
+      saveBtn.disabled = false;
+    }
+  };
+
+  saveBtn.addEventListener("click", () => void save());
+  input.addEventListener("input", () => {
+    status.textContent = "";
+    status.className = "editor-status";
+  });
+  // Cmd/Ctrl+S saves from anywhere in the Instructions section, not only while
+  // the textarea holds focus (after a click, focus is on the Save button).
+  document.addEventListener("keydown", (e) => {
+    if (state.section !== "instructions") return;
+    if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key.toLowerCase() === "s") {
+      e.preventDefault();
+      void save();
+    }
+  });
+}
+
 // ---- Polling ----
 
 async function refresh(): Promise<void> {
@@ -376,6 +442,7 @@ async function startDashboard(): Promise<void> {
   wireResolve();
   wireArrowKeys();
   wireBack();
+  wireInstructions();
   wireNav();
 
   state.conversations = await listConversations();

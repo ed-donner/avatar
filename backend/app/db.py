@@ -1,5 +1,6 @@
 """Supabase access layer: the only module that talks to the database."""
 
+from datetime import datetime, timezone
 from functools import lru_cache
 
 from supabase import Client, create_client
@@ -8,6 +9,7 @@ from app.config import get_settings
 
 TABLE = "messages"
 FAQ_TABLE = "faq"
+SETTINGS_TABLE = "app_settings"
 
 
 PAGE = 1000  # PostgREST's default (and max) rows per request
@@ -122,3 +124,17 @@ def latest_name(rows: list[dict]) -> str | None:
 def list_faqs() -> list[dict]:
     """All FAQ rows (id, concise, question, answer) ordered by id."""
     return get_client().table(FAQ_TABLE).select("*").order("id").execute().data
+
+
+def get_instructions() -> str:
+    """The admin's additional system-prompt instructions (singleton row id=1)."""
+    rows = get_client().table(SETTINGS_TABLE).select("instructions").eq("id", 1).execute().data
+    return rows[0]["instructions"] if rows else ""
+
+
+def set_instructions(text: str) -> None:
+    """Store the additional instructions on the singleton settings row."""
+    now = datetime.now(timezone.utc).isoformat()
+    get_client().table(SETTINGS_TABLE).upsert(
+        {"id": 1, "instructions": text, "updated_at": now}
+    ).execute()
