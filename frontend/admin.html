@@ -47,6 +47,12 @@
       <div class="brand-name">Avatar</div>
       <span class="admin-pill">Admin</span>
     </div>
+    <nav class="main-nav" id="mainNav" aria-label="Dashboard sections">
+      <button class="nav-tab is-active" type="button" data-section="conversations" aria-controls="section-conversations" aria-current="page"><svg class="icon icon--sm"><use href="/icons.svg#i-inbox"/></svg><span>Conversations</span></button>
+      <button class="nav-tab" type="button" data-section="archive" aria-controls="section-archive"><svg class="icon icon--sm"><use href="/icons.svg#i-archive"/></svg><span>Archive</span></button>
+      <button class="nav-tab" type="button" data-section="instructions" aria-controls="section-instructions"><svg class="icon icon--sm"><use href="/icons.svg#i-sliders"/></svg><span>Instructions</span></button>
+      <button class="nav-tab" type="button" data-section="faq" aria-controls="section-faq"><svg class="icon icon--sm"><use href="/icons.svg#i-help"/></svg><span>FAQ</span></button>
+    </nav>
     <div class="appbar-right">
       <span class="secure-note"><svg class="icon icon--sm"><use href="/icons.svg#i-shield"/></svg> Secure session</span>
       <span class="divider-v"></span>
@@ -61,7 +67,9 @@
     </div>
   </header>
 
-  <div class="workspace">
+  <div class="sections">
+    <!-- Conversations section -->
+    <section class="section section--convos" data-section="conversations" id="section-conversations">
     <!-- Sidebar / inbox -->
     <aside class="sidebar">
       <div class="sidebar-head">
@@ -134,6 +142,34 @@
             </div>
           </div>
         </div>
+      </div>
+    </section>
+    </section>
+
+    <!-- Archive section (built in a later phase) -->
+    <section class="section section--panel" data-section="archive" id="section-archive" hidden>
+      <div class="panel-placeholder">
+        <svg class="icon icon--xl"><use href="/icons.svg#i-archive"/></svg>
+        <h2>Archive</h2>
+        <p>Archived conversations will live here.</p>
+      </div>
+    </section>
+
+    <!-- Instructions section (built in a later phase) -->
+    <section class="section section--panel" data-section="instructions" id="section-instructions" hidden>
+      <div class="panel-placeholder">
+        <svg class="icon icon--xl"><use href="/icons.svg#i-sliders"/></svg>
+        <h2>Instructions</h2>
+        <p>Extra instructions for the Avatar will be editable here.</p>
+      </div>
+    </section>
+
+    <!-- FAQ section (built in a later phase) -->
+    <section class="section section--panel" data-section="faq" id="section-faq" hidden>
+      <div class="panel-placeholder">
+        <svg class="icon icon--xl"><use href="/icons.svg#i-help"/></svg>
+        <h2>FAQ</h2>
+        <p>The FAQ editor will live here.</p>
       </div>
     </section>
   </div>

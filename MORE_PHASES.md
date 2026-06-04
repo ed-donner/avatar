@@ -47,9 +47,15 @@ precedes the Instructions / FAQ-editor / Archive admin UI.
 
 ## Phase 3 - Admin main nav scaffolding
 
-- [ ] 3.1 Add `Conversations | Archive | Instructions | FAQ` tab strip to the appbar + view
-      switching; Conversations = existing dashboard; placeholders for the rest; responsive.
-- [ ] 3.2 Add needed SVG icons (archive, download, add, delete, save, fetch/globe).
+- [x] 3.1 Added `Conversations | Archive | Instructions | FAQ` tab strip in the appbar + section
+      switching (`setSection`/`wireNav`, persisted to localStorage, aria-controls); Conversations =
+      existing dashboard; placeholder panels for the rest; responsive (icon-only nav on mobile).
+- [x] 3.2 Added SVG icons: archive, download, plus, trash, save, globe, help.
+- [x] 3.3 Bugfix (discovered): `frontend/public/icons.svg` shipped without the painting `<style>`,
+      so ALL icons (visitor + admin) rendered as solid silhouettes instead of line-art. Restored
+      the scoped `symbol{fill:none;stroke:currentColor;...}` block; verified brand logos unaffected.
+- [x] 3.4 Review fixes (adversarial workflow): guarded polling re-fetch and desktop auto-select on
+      `section==='conversations'` so a restored/active panel never silently marks a thread read.
 
 ## Phase 4 - Additional instructions
 

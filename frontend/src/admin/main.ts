@@ -21,6 +21,10 @@ import { formatShort, formatTime } from "../lib/time.ts";
 
 const POLL_MS = 10_000;
 
+type Section = "conversations" | "archive" | "instructions" | "faq";
+const SECTIONS: readonly Section[] = ["conversations", "archive", "instructions", "faq"];
+const SECTION_KEY = "avatar-admin-section";
+
 /** Tool-status labels keyed by stored tool name (owner injected at render time). */
 function toolLabel(tool: string, owner: string): { icon: string; text: string } {
   if (tool === "faq_tool") return { icon: "check", text: "faq_tool · looked up the FAQ" };
@@ -50,6 +54,7 @@ function shortId(conversationId: string): string {
 
 const state = {
   owner: "the owner",
+  section: "conversations" as Section,
   conversations: [] as ConversationSummary[],
   activeId: null as string | null,
   thread: null as ConversationThread | null,
@@ -61,6 +66,29 @@ const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) 
 const mobileMq = window.matchMedia("(max-width: 640px)");
 function setView(view: "list" | "thread"): void {
   $("dashboard").dataset.view = view;
+}
+
+/** Switch the active dashboard section; show only its panel, persist the choice. */
+function setSection(section: Section): void {
+  state.section = section;
+  localStorage.setItem(SECTION_KEY, section);
+  for (const tab of document.querySelectorAll<HTMLElement>(".nav-tab")) {
+    const active = tab.dataset.section === section;
+    tab.classList.toggle("is-active", active);
+    if (active) tab.setAttribute("aria-current", "page");
+    else tab.removeAttribute("aria-current");
+  }
+  for (const panel of document.querySelectorAll<HTMLElement>(".sections .section")) {
+    panel.hidden = panel.dataset.section !== section;
+  }
+}
+
+function wireNav(): void {
+  for (const tab of document.querySelectorAll<HTMLElement>(".nav-tab")) {
+    tab.addEventListener("click", () => setSection(tab.dataset.section as Section));
+  }
+  const saved = localStorage.getItem(SECTION_KEY) as Section | null;
+  setSection(saved && SECTIONS.includes(saved) ? saved : "conversations");
 }
 
 function showDashboard(): void {
@@ -258,6 +286,7 @@ function moveSelection(delta: number): void {
 
 function wireArrowKeys(): void {
   document.addEventListener("keydown", (e) => {
+    if (state.section !== "conversations") return;
     const target = e.target as HTMLElement;
     if (target instanceof HTMLTextAreaElement || target instanceof HTMLInputElement) return;
     if (e.key === "ArrowDown") {
@@ -316,7 +345,10 @@ function wireResolve(): void {
 async function refresh(): Promise<void> {
   state.conversations = await listConversations();
   renderInbox();
-  if (state.activeId) {
+  // Only re-fetch the open thread on the conversations section: getConversationAdmin
+  // marks rows read server-side, so doing it while on a panel would silently clear a
+  // visitor's unread/needs-you flag the human can't see.
+  if (state.section === "conversations" && state.activeId) {
     const summary = state.conversations.find((c) => c.conversation_id === state.activeId);
     if (summary && (!state.thread || summary.last_id !== state.thread.messages.at(-1)?.id)) {
       state.thread = await getConversationAdmin(state.activeId);
@@ -344,12 +376,15 @@ async function startDashboard(): Promise<void> {
   wireResolve();
   wireArrowKeys();
   wireBack();
+  wireNav();
 
   state.conversations = await listConversations();
   renderInbox();
   // On a phone, land on the inbox; don't auto-open (which would mark a thread
-  // read). On wider screens keep the side-by-side auto-selection.
-  if (!mobileMq.matches && state.conversations.length) {
+  // read). On wider screens keep the side-by-side auto-selection, but only when
+  // the conversations section is actually showing (a restored panel section must
+  // not silently mark the top conversation read).
+  if (!mobileMq.matches && state.section === "conversations" && state.conversations.length) {
     await selectConversation(state.conversations[0].conversation_id);
   }
   startPolling();

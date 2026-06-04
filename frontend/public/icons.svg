@@ -1,7 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
 
 <defs>
-  
+  <style>
+    symbol { fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+    symbol .fill { fill: currentColor; stroke: none; }
+  </style>
 </defs>
 
 
@@ -70,4 +73,18 @@
 <symbol id="i-linkedin" viewBox="0 0 24 24"><path fill="currentColor" stroke="none" d="M20.45 20.45h-3.56v-5.57c0-1.33-.03-3.04-1.85-3.04-1.86 0-2.14 1.45-2.14 2.94v5.67H9.35V9h3.41v1.56h.05c.47-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.46v6.28zM5.34 7.43a2.07 2.07 0 1 1 0-4.14 2.07 2.07 0 0 1 0 4.14zm1.78 13.02H3.56V9h3.56v11.45zM22.22 0H1.77C.8 0 0 .78 0 1.73v20.54C0 23.22.8 24 1.77 24h20.45c.98 0 1.78-.78 1.78-1.73V1.73C24 .78 23.2 0 22.22 0z"></path></symbol>
 
 <symbol id="i-youtube" viewBox="0 0 24 24"><path fill="currentColor" stroke="none" d="M23.5 6.5a3.02 3.02 0 0 0-2.12-2.14C19.5 3.85 12 3.85 12 3.85s-7.5 0-9.38.51A3.02 3.02 0 0 0 .5 6.5 31.4 31.4 0 0 0 0 12a31.4 31.4 0 0 0 .5 5.5 3.02 3.02 0 0 0 2.12 2.14c1.88.51 9.38.51 9.38.51s7.5 0 9.38-.51a3.02 3.02 0 0 0 2.12-2.14A31.4 31.4 0 0 0 24 12a31.4 31.4 0 0 0-.5-5.5zM9.55 15.57V8.43L15.82 12z"></path></symbol>
+
+<symbol id="i-archive" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="4" rx="1"></rect><path d="M5 8.5V18a1.5 1.5 0 0 0 1.5 1.5h11A1.5 1.5 0 0 0 19 18V8.5"></path><path d="M10 12h4"></path></symbol>
+
+<symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v10.5"></path><path d="M7.5 10.5L12 15l4.5-4.5"></path><path d="M5 19.5h14"></path></symbol>
+
+<symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"></path></symbol>
+
+<symbol id="i-trash" viewBox="0 0 24 24"><path d="M5 6.5h14"></path><path d="M9.5 6.5V5A1.5 1.5 0 0 1 11 3.5h2A1.5 1.5 0 0 1 14.5 5v1.5"></path><path d="M6.8 6.5l.8 12a1.5 1.5 0 0 0 1.5 1.4h5.8a1.5 1.5 0 0 0 1.5-1.4l.8-12"></path><path d="M10 10v6M14 10v6"></path></symbol>
+
+<symbol id="i-save" viewBox="0 0 24 24"><path d="M6 4.5h9.4L19.5 8.6V18a1.5 1.5 0 0 1-1.5 1.5H6A1.5 1.5 0 0 1 4.5 18V6A1.5 1.5 0 0 1 6 4.5z"></path><path d="M8 4.5v4.5h6V4.5"></path><path d="M8 19v-5.5h8V19"></path></symbol>
+
+<symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"></circle><path d="M4 12h16"></path><path d="M12 4c2.5 2.2 3.8 5 3.8 8S14.5 17.8 12 20c-2.5-2.2-3.8-5-3.8-8S9.5 6.2 12 4z"></path></symbol>
+
+<symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.2"></circle><path d="M9.7 9.6a2.3 2.3 0 0 1 4.5.6c0 1.5-2.2 1.9-2.2 3.3"></path><circle cx="12" cy="16.6" r="0.6" class="fill"></circle></symbol>
 </svg>

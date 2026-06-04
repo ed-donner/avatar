@@ -35,8 +35,27 @@ body { height: 100dvh; overflow: hidden; }
   border: 1px solid var(--border); border-radius: var(--radius-pill); }
 .owner-chip span { font-size: var(--text-sm); color: var(--text-muted); font-weight: 600; }
 
-/* ---- Layout ---- */
-.workspace { display: grid; grid-template-columns: var(--sidebar-w) 1fr; min-height: 0; }
+/* ---- Main nav (Conversations | Archive | Instructions | FAQ) ---- */
+.main-nav { display: flex; align-items: center; gap: var(--space-1); }
+.nav-tab { display: inline-flex; align-items: center; gap: var(--space-2); padding: 7px 12px;
+  border-radius: var(--radius-md); border: 1px solid transparent; background: none; cursor: pointer;
+  color: var(--text-muted); font-family: var(--font-sans); font-size: var(--text-sm); font-weight: 600; line-height: 1; }
+.nav-tab .icon { color: var(--text-faint); }
+.nav-tab:hover { background: var(--surface-2); color: var(--text); }
+.nav-tab.is-active { background: var(--surface-3); color: var(--text); border-color: var(--border-strong); }
+.nav-tab.is-active .icon { color: var(--blue-strong); }
+
+/* ---- Sections (one visible at a time; inactive ones get [hidden]) ---- */
+.sections { min-height: 0; }
+.section { min-height: 0; height: 100%; }
+.section--convos { display: grid; grid-template-columns: var(--sidebar-w) 1fr; min-height: 0; }
+.section--panel { display: flex; flex-direction: column; overflow-y: auto; background: var(--surface-0); }
+.panel-placeholder { margin: auto; display: flex; flex-direction: column; align-items: center;
+  gap: var(--space-3); text-align: center; color: var(--text-faint); padding: var(--space-8); }
+.panel-placeholder .icon { color: var(--text-faint); }
+.panel-placeholder h2 { margin: 0; font-family: var(--font-display); font-weight: 600;
+  font-size: var(--text-xl); color: var(--text-muted); }
+.panel-placeholder p { margin: 0; font-size: var(--text-sm); max-width: 38ch; }
 
 /* ---- Sidebar ---- */
 .sidebar { display: flex; flex-direction: column; min-height: 0; border-right: 1px solid var(--border);
@@ -124,12 +143,17 @@ body { height: 100dvh; overflow: hidden; }
 @media (max-width: 640px) {
   /* App bar trimmed to fit a phone. */
   .appbar { padding: 0 var(--space-3); gap: var(--space-2); }
-  .appbar .secure-note, .appbar .divider-v { display: none; }
+  .appbar .secure-note, .appbar .divider-v, .admin-pill { display: none; }
   .owner-chip { padding: 4px; }
   .owner-chip #ownerName { display: none; }
 
+  /* Nav becomes icon-only to fit the trimmed bar. */
+  .main-nav { gap: 2px; }
+  .nav-tab { padding: 7px 9px; }
+  .nav-tab span { display: none; }
+
   /* One pane at a time. */
-  .workspace { grid-template-columns: 1fr; }
+  .section--convos { grid-template-columns: 1fr; }
   .sidebar { border-right: none; }
   .dashboard[data-view="thread"] .sidebar { display: none; }
   .dashboard[data-view="list"] .main { display: none; }
