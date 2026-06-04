@@ -5,6 +5,8 @@ import type {
   Config,
   ConversationSummary,
   ConversationThread,
+  FaqInput,
+  FaqItem,
   Instructions,
   Message,
 } from "./types.ts";
@@ -160,4 +162,31 @@ export function saveInstructions(instructions: string): Promise<Instructions> {
     credentials: "same-origin",
     body: JSON.stringify({ instructions }),
   }).then((r) => json<Instructions>(r));
+}
+
+export function listFaqs(): Promise<FaqItem[]> {
+  return fetch("/admin/faq", adminInit).then((r) => json<FaqItem[]>(r));
+}
+
+export function createFaq(body: FaqInput): Promise<FaqItem> {
+  return fetch("/admin/faq", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
+    body: JSON.stringify(body),
+  }).then((r) => json<FaqItem>(r));
+}
+
+export function updateFaq(id: number, body: FaqInput): Promise<FaqItem> {
+  return fetch(`/admin/faq/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
+    body: JSON.stringify(body),
+  }).then((r) => json<FaqItem>(r));
+}
+
+export async function deleteFaq(id: number): Promise<void> {
+  const res = await fetch(`/admin/faq/${id}`, { method: "DELETE", credentials: "same-origin" });
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
 }

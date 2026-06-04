@@ -446,7 +446,7 @@ async function boot(): Promise<void> {
   const qParam = params.get("q");
   const mParam = params.get("m");
   const qn = qParam ? qParam.replace(/^[qQ]/, "") : "";
-  if (qParam && /^\d{1,2}$/.test(qn)) {
+  if (qParam && /^\d{1,3}$/.test(qn)) {
     history.replaceState(null, "", location.pathname);
     composerInput.value = `Q${qn}`;
     send();

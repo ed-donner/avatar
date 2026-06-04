@@ -72,9 +72,18 @@ precedes the Instructions / FAQ-editor / Archive admin UI.
 
 ## Phase 5 - FAQ editor (admin)
 
-- [ ] 5.1 Backend FAQ CRUD endpoints (admin-guarded).
-- [ ] 5.2 FAQ tab: list rows (id/concise/question/answer) with add / edit / delete.
-- [ ] 5.3 Tests.
+- [x] 5.1 Backend FAQ CRUD: `db.create_faq`/`update_faq`/`delete_faq`; admin-guarded
+      GET/POST/PUT/DELETE `/admin/faq`; each write calls `knowledge.reload_faqs()`. New rows get
+      id = max+1; `FaqInput` rejects blank/whitespace fields (422).
+- [x] 5.2 FAQ tab: count + "Add FAQ"; scrollable cards (Q-number, concise, question, edit/delete);
+      native `<dialog>` editor (concise/question/answer) for add + edit; delete behind a confirm.
+- [x] 5.3 Tests: `test_faq_admin.py` (401 guards x4, CRUD roundtrip, 404-on-missing, 422-on-blank;
+      cleanup fixture keeps the live table at 61). Full suite 63 passed; E2E create/edit/delete verified.
+- [x] 5.4 Widened the `Qn` / `?q=N` cap from 2 to 3 digits (Q1..Q999) since the editor lets ids
+      grow past 99 (backend `INSTANT_RE` + visitor `?q` parser + tests).
+- [x] 5.5 Review fixes (adversarial workflow): MEDIUM blank-input validation + Qn>99 cap;
+      MEDIUM dialog max-height/scroll + mobile width; LOWs (reset edit-id on dialog close,
+      double-delete guard, focus first empty field on validation error).
 
 ## Phase 6 - Archive
 

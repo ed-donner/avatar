@@ -5,17 +5,21 @@ import "../styles/components.css";
 import "../styles/admin.css";
 
 import {
+  createFaq,
+  deleteFaq,
   getConfig,
   getConversationAdmin,
   getInstructions,
   listConversations,
+  listFaqs,
   login,
   me,
   postHumanMessage,
   resolveConversation,
   saveInstructions,
+  updateFaq,
 } from "../lib/api.ts";
-import type { ConversationSummary, ConversationThread, Message } from "../lib/types.ts";
+import type { ConversationSummary, ConversationThread, FaqItem, Message } from "../lib/types.ts";
 import { initTheme, wireThemeToggle } from "../lib/theme.ts";
 import { renderMarkdown } from "../lib/markdown.ts";
 import { escapeHtml, icon } from "../lib/dom.ts";
@@ -60,6 +64,7 @@ const state = {
   conversations: [] as ConversationSummary[],
   activeId: null as string | null,
   thread: null as ConversationThread | null,
+  faqs: [] as FaqItem[],
 };
 
 const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
@@ -84,6 +89,7 @@ function setSection(section: Section): void {
     panel.hidden = panel.dataset.section !== section;
   }
   if (section === "instructions") void loadInstructions();
+  if (section === "faq") void loadFaqs();
 }
 
 function wireNav(): void {
@@ -406,6 +412,114 @@ function wireInstructions(): void {
   });
 }
 
+// ---- FAQ editor ----
+
+let faqEditingId: number | null = null; // null while adding a new FAQ
+let faqDeleting = false; // guards against a double-click delete
+
+async function loadFaqs(): Promise<void> {
+  try {
+    state.faqs = await listFaqs();
+    renderFaqList();
+  } catch {
+    // transient; the list keeps its current contents.
+  }
+}
+
+function renderFaqList(): void {
+  const list = $("faqList");
+  $("faqCount").textContent = String(state.faqs.length);
+  list.replaceChildren();
+  for (const faq of state.faqs) {
+    const card = document.createElement("div");
+    card.className = "faq-card";
+    card.dataset.id = String(faq.id);
+    card.innerHTML = `
+      <span class="faq-num">Q${faq.id}</span>
+      <div class="faq-card-text">
+        <div class="faq-concise">${escapeHtml(faq.concise)}</div>
+        <div class="faq-question">${escapeHtml(faq.question)}</div>
+      </div>
+      <div class="faq-card-actions">
+        <button class="icon-btn" data-act="edit" title="Edit" aria-label="Edit Q${faq.id}"><svg class="icon icon--sm"><use href="/icons.svg#i-edit"/></svg></button>
+        <button class="icon-btn" data-act="delete" title="Delete" aria-label="Delete Q${faq.id}"><svg class="icon icon--sm"><use href="/icons.svg#i-trash"/></svg></button>
+      </div>`;
+    card.querySelector('[data-act="edit"]')!.addEventListener("click", () => openFaqDialog(faq));
+    card.querySelector('[data-act="delete"]')!.addEventListener("click", () => void removeFaq(faq));
+    list.append(card);
+  }
+}
+
+function openFaqDialog(faq: FaqItem | null): void {
+  faqEditingId = faq?.id ?? null;
+  $("faqDialogTitle").textContent = faq ? `Edit Q${faq.id}` : "Add FAQ";
+  $<HTMLInputElement>("faqConcise").value = faq?.concise ?? "";
+  $<HTMLTextAreaElement>("faqQuestion").value = faq?.question ?? "";
+  $<HTMLTextAreaElement>("faqAnswer").value = faq?.answer ?? "";
+  const status = $("faqDialogStatus");
+  status.textContent = "";
+  status.className = "editor-status";
+  $<HTMLDialogElement>("faqDialog").showModal();
+  $<HTMLInputElement>("faqConcise").focus();
+}
+
+async function saveFaq(): Promise<void> {
+  const saveBtn = $<HTMLButtonElement>("faqSave");
+  const status = $("faqDialogStatus");
+  const body = {
+    concise: $<HTMLInputElement>("faqConcise").value.trim(),
+    question: $<HTMLTextAreaElement>("faqQuestion").value.trim(),
+    answer: $<HTMLTextAreaElement>("faqAnswer").value.trim(),
+  };
+  if (!body.concise || !body.question || !body.answer) {
+    status.textContent = "All three fields are required.";
+    status.className = "editor-status is-error";
+    $(!body.concise ? "faqConcise" : !body.question ? "faqQuestion" : "faqAnswer").focus();
+    return;
+  }
+  if (saveBtn.disabled) return;
+  saveBtn.disabled = true;
+  status.textContent = "Saving…";
+  status.className = "editor-status";
+  try {
+    if (faqEditingId === null) await createFaq(body);
+    else await updateFaq(faqEditingId, body);
+    $<HTMLDialogElement>("faqDialog").close();
+    await loadFaqs();
+  } catch {
+    status.textContent = "Couldn't save — try again";
+    status.className = "editor-status is-error";
+  } finally {
+    saveBtn.disabled = false;
+  }
+}
+
+async function removeFaq(faq: FaqItem): Promise<void> {
+  if (faqDeleting) return;
+  const ok = confirm(`Delete Q${faq.id} ("${faq.concise}")?\n\nThis removes it from the FAQ, the Qn / ?q=${faq.id} shortcut and the Avatar's routing.`);
+  if (!ok) return;
+  faqDeleting = true;
+  try {
+    await deleteFaq(faq.id);
+    await loadFaqs();
+  } catch {
+    // leave the list as-is on failure.
+  } finally {
+    faqDeleting = false;
+  }
+}
+
+function wireFaq(): void {
+  const dialog = $<HTMLDialogElement>("faqDialog");
+  $("faqAddBtn").addEventListener("click", () => openFaqDialog(null));
+  $("faqCancel").addEventListener("click", () => dialog.close());
+  $("faqSave").addEventListener("click", () => void saveFaq());
+  // Clear edit state however the dialog closes (Cancel, Esc, backdrop, save).
+  dialog.addEventListener("close", () => {
+    faqEditingId = null;
+  });
+}
+
 // ---- Polling ----
 
 async function refresh(): Promise<void> {
@@ -443,6 +557,7 @@ async function startDashboard(): Promise<void> {
   wireArrowKeys();
   wireBack();
   wireInstructions();
+  wireFaq();
   wireNav();
 
   state.conversations = await listConversations();

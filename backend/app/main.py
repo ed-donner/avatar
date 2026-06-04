@@ -25,6 +25,8 @@ from app.models import (
     ConfigResponse,
     ConversationSummary,
     ConversationThread,
+    FaqInput,
+    FaqItem,
     HumanMessageRequest,
     InstructionsBody,
     LoginRequest,
@@ -230,6 +232,38 @@ def admin_set_instructions(body: InstructionsBody) -> InstructionsBody:
     """Save the additional system-prompt instructions (appended after the style section)."""
     db.set_instructions(body.instructions)
     return InstructionsBody(instructions=body.instructions)
+
+
+@admin.get("/faq", response_model=list[FaqItem], dependencies=[Depends(require_admin)])
+def admin_list_faqs() -> list[FaqItem]:
+    """All FAQ rows, ordered by id."""
+    return [FaqItem(**row) for row in db.list_faqs()]
+
+
+@admin.post("/faq", response_model=FaqItem, dependencies=[Depends(require_admin)])
+def admin_create_faq(body: FaqInput) -> FaqItem:
+    """Add a FAQ (id assigned as max+1) and refresh the prompt cache."""
+    row = db.create_faq(body.concise, body.question, body.answer)
+    knowledge.reload_faqs()
+    return FaqItem(**row)
+
+
+@admin.put("/faq/{faq_id}", response_model=FaqItem, dependencies=[Depends(require_admin)])
+def admin_update_faq(faq_id: int, body: FaqInput) -> FaqItem:
+    """Update a FAQ by id and refresh the prompt cache."""
+    row = db.update_faq(faq_id, body.concise, body.question, body.answer)
+    if row is None:
+        raise HTTPException(status_code=404, detail="FAQ not found")
+    knowledge.reload_faqs()
+    return FaqItem(**row)
+
+
+@admin.delete("/faq/{faq_id}", dependencies=[Depends(require_admin)])
+def admin_delete_faq(faq_id: int) -> dict:
+    """Delete a FAQ by id and refresh the prompt cache."""
+    db.delete_faq(faq_id)
+    knowledge.reload_faqs()
+    return {"ok": True}
 
 
 app.include_router(api)

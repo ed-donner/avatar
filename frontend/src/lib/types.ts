@@ -39,6 +39,16 @@ export interface Instructions {
   instructions: string;
 }
 
+export interface FaqInput {
+  concise: string;
+  question: string;
+  answer: string;
+}
+
+export interface FaqItem extends FaqInput {
+  id: number;
+}
+
 /** SSE wire events streamed from POST /api/chat. */
 export type ChatEvent =
   | { type: "tool"; phase: "called"; tool: string }

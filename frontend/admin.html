@@ -175,13 +175,45 @@
       </div>
     </section>
 
-    <!-- FAQ section (built in a later phase) -->
-    <section class="section section--panel" data-section="faq" id="section-faq" hidden>
-      <div class="panel-placeholder">
-        <svg class="icon icon--xl"><use href="/icons.svg#i-help"/></svg>
-        <h2>FAQ</h2>
-        <p>The FAQ editor will live here.</p>
+    <!-- FAQ section -->
+    <section class="section section--faq" data-section="faq" id="section-faq" hidden>
+      <div class="faq-wrap">
+        <div class="faq-head">
+          <div class="faq-head-text">
+            <h2>FAQ <span class="count-badge" id="faqCount">0</span></h2>
+            <p>The numbered FAQ. Visitors can type <code>Qn</code> (e.g. <code>Q2</code>) or open
+              <code>?q=N</code> for an instant answer, and the Avatar routes here too. Editing the
+              answer to <code>Qn</code> changes what that shortcut returns.</p>
+          </div>
+          <button class="btn btn--primary" id="faqAddBtn" type="button">
+            <svg class="icon icon--sm"><use href="/icons.svg#i-plus"/></svg> Add FAQ
+          </button>
+        </div>
+        <div class="faq-list scroll" id="faqList"><!-- cards rendered by admin/main.ts --></div>
       </div>
+
+      <dialog class="faq-dialog" id="faqDialog">
+        <div class="faq-dialog-body">
+          <h3 id="faqDialogTitle">Edit FAQ</h3>
+          <label class="faq-field">
+            <span>Concise <em>short routing phrase the Avatar matches against</em></span>
+            <input type="text" id="faqConcise" />
+          </label>
+          <label class="faq-field">
+            <span>Question <em>the full original question</em></span>
+            <textarea id="faqQuestion" rows="2"></textarea>
+          </label>
+          <label class="faq-field">
+            <span>Answer <em>Markdown shown to the visitor</em></span>
+            <textarea id="faqAnswer" rows="9"></textarea>
+          </label>
+          <div class="faq-dialog-actions">
+            <span class="editor-status" id="faqDialogStatus" aria-live="polite"></span>
+            <button type="button" class="btn btn--ghost" id="faqCancel">Cancel</button>
+            <button type="button" class="btn btn--primary" id="faqSave">Save</button>
+          </div>
+        </div>
+      </dialog>
     </section>
   </div>
 </div>

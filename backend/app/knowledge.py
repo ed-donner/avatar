@@ -10,7 +10,7 @@ from functools import lru_cache
 from app import db
 from app.config import get_settings
 
-INSTANT_RE = re.compile(r"^q(\d{1,2})$", re.IGNORECASE)
+INSTANT_RE = re.compile(r"^q(\d{1,3})$", re.IGNORECASE)  # Q1..Q999 (ids can grow via the editor)
 
 
 @lru_cache

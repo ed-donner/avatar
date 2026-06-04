@@ -126,6 +126,35 @@ def list_faqs() -> list[dict]:
     return get_client().table(FAQ_TABLE).select("*").order("id").execute().data
 
 
+def create_faq(concise: str, question: str, answer: str) -> dict:
+    """Insert a new FAQ with the next id (max existing id + 1) and return it.
+
+    The id doubles as the public Qn / ?q=N number, so it is assigned explicitly
+    rather than relying on a database sequence.
+    """
+    last = get_client().table(FAQ_TABLE).select("id").order("id", desc=True).limit(1).execute().data
+    next_id = (last[0]["id"] + 1) if last else 1
+    record = {"id": next_id, "concise": concise, "question": question, "answer": answer}
+    return get_client().table(FAQ_TABLE).insert(record).execute().data[0]
+
+
+def update_faq(faq_id: int, concise: str, question: str, answer: str) -> dict | None:
+    """Update a FAQ's text fields by id; return the updated row, or None if absent."""
+    result = (
+        get_client()
+        .table(FAQ_TABLE)
+        .update({"concise": concise, "question": question, "answer": answer})
+        .eq("id", faq_id)
+        .execute()
+    )
+    return result.data[0] if result.data else None
+
+
+def delete_faq(faq_id: int) -> None:
+    """Delete a FAQ by id."""
+    get_client().table(FAQ_TABLE).delete().eq("id", faq_id).execute()
+
+
 def get_instructions() -> str:
     """The admin's additional system-prompt instructions (singleton row id=1)."""
     rows = get_client().table(SETTINGS_TABLE).select("instructions").eq("id", 1).execute().data

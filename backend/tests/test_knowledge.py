@@ -63,11 +63,12 @@ def test_instant_faq_number_matches():
     assert knowledge.instant_faq_number("Q2") == 2
     assert knowledge.instant_faq_number("q12") == 12
     assert knowledge.instant_faq_number("  Q3  ") == 3
+    assert knowledge.instant_faq_number("Q123") == 123  # ids can exceed 99 via the editor
 
 
 def test_instant_faq_number_non_matches():
     assert knowledge.instant_faq_number("question") is None
-    assert knowledge.instant_faq_number("Q123") is None
+    assert knowledge.instant_faq_number("Q1234") is None  # capped at 3 digits
     assert knowledge.instant_faq_number("hello Q2") is None
 
 
