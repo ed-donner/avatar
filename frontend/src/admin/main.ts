@@ -5,17 +5,22 @@ import "../styles/components.css";
 import "../styles/admin.css";
 
 import {
+  archiveConversation,
+  archiveInactive,
   createFaq,
   deleteFaq,
+  getArchivedConversation,
   getConfig,
   getConversationAdmin,
   getInstructions,
+  listArchive,
   listConversations,
   listFaqs,
   login,
   me,
   postHumanMessage,
   resolveConversation,
+  restoreConversation,
   saveInstructions,
   updateFaq,
 } from "../lib/api.ts";
@@ -65,6 +70,7 @@ const state = {
   activeId: null as string | null,
   thread: null as ConversationThread | null,
   faqs: [] as FaqItem[],
+  archive: [] as ConversationSummary[],
 };
 
 const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
@@ -90,6 +96,7 @@ function setSection(section: Section): void {
   }
   if (section === "instructions") void loadInstructions();
   if (section === "faq") void loadFaqs();
+  if (section === "archive") void loadArchive();
 }
 
 function wireNav(): void {
@@ -520,6 +527,179 @@ function wireFaq(): void {
   });
 }
 
+// ---- Archive ----
+
+let archiveViewId: string | null = null; // conversation open in the read-only dialog
+let archiveBusy = false; // guards the thread Archive action against double-clicks
+const restoringIds = new Set<string>(); // per-conversation restore guards (allow concurrent restores)
+
+async function loadArchive(): Promise<void> {
+  try {
+    state.archive = await listArchive();
+    renderArchiveList();
+  } catch {
+    // transient; the list keeps its current contents.
+  }
+}
+
+function renderArchiveList(): void {
+  const list = $("archiveList");
+  $("archiveCount").textContent = String(state.archive.length);
+  list.replaceChildren();
+  if (!state.archive.length) {
+    list.innerHTML = `<div class="convo-empty">No archived conversations yet.</div>`;
+    return;
+  }
+  for (const convo of state.archive) {
+    const card = document.createElement("div");
+    card.className = "archive-card";
+    card.dataset.id = convo.conversation_id;
+    card.innerHTML = `
+      <span class="avatar-initials">${escapeHtml(initialsOf(convo.conversation_name))}</span>
+      <div class="convo-main">
+        <div class="convo-top"><span class="convo-name">${escapeHtml(displayName(convo.conversation_name))}</span></div>
+        <div class="convo-preview">${escapeHtml(convo.preview)}</div>
+      </div>
+      <div class="archive-card-side">
+        <span class="msg-time">${escapeHtml(formatShort(convo.last_created_at))}</span>
+        <button class="btn btn--secondary btn--sm" data-act="restore" aria-label="Restore conversation with ${escapeHtml(displayName(convo.conversation_name))}">
+          <svg class="icon icon--sm"><use href="/icons.svg#i-reset"/></svg> <span class="btn-label">Restore</span>
+        </button>
+      </div>`;
+    card.querySelector('[data-act="restore"]')!.addEventListener("click", (e) => {
+      e.stopPropagation();
+      void restoreFromArchive(convo.conversation_id);
+    });
+    card.addEventListener("click", () => void openArchiveView(convo.conversation_id));
+    list.append(card);
+  }
+}
+
+/** Read-only view of an archived thread (no state change server-side). */
+async function openArchiveView(id: string): Promise<void> {
+  archiveViewId = id;
+  const dialog = $<HTMLDialogElement>("archiveDialog");
+  const status = $("archiveDialogStatus");
+  status.textContent = "";
+  status.className = "editor-status";
+  try {
+    const thread = await getArchivedConversation(id);
+    $("archiveInitials").textContent = initialsOf(thread.conversation_name);
+    $("archiveDialogName").textContent = displayName(thread.conversation_name);
+    const first = thread.messages[0];
+    const started = first ? ` · started ${formatTime(first.created_at)}` : "";
+    const count = thread.messages.length;
+    $("archiveDialogSub").textContent = `${shortId(id)} · ${count} message${count === 1 ? "" : "s"}${started}`;
+    const inner = $("archiveDialogThread");
+    inner.replaceChildren();
+    for (const message of thread.messages) inner.append(messageEl(message));
+    dialog.showModal();
+    inner.scrollTop = 0;
+  } catch {
+    archiveViewId = null;
+  }
+}
+
+async function restoreFromArchive(id: string): Promise<void> {
+  if (restoringIds.has(id)) return; // per-conversation, so distinct restores can overlap
+  restoringIds.add(id);
+  const headStatus = $("archiveStatus");
+  try {
+    await restoreConversation(id);
+    if (archiveViewId === id) $<HTMLDialogElement>("archiveDialog").close();
+    // Drop it locally first so a failed re-fetch can't leave a ghost card.
+    state.archive = state.archive.filter((c) => c.conversation_id !== id);
+    renderArchiveList();
+    headStatus.textContent = "";
+    headStatus.className = "editor-status";
+    // Reconcile with the server and bring it back into the live inbox.
+    await loadArchive();
+    state.conversations = await listConversations();
+    renderInbox();
+  } catch {
+    // Surface the failure wherever the owner is looking, and resync the list.
+    const target = archiveViewId === id ? $("archiveDialogStatus") : headStatus;
+    target.textContent = "Couldn't restore — try again";
+    target.className = "editor-status is-error";
+    await loadArchive();
+  } finally {
+    restoringIds.delete(id);
+  }
+}
+
+/** Archive the currently open conversation (from the thread header). */
+async function archiveActiveConversation(): Promise<void> {
+  if (!state.activeId || archiveBusy) return;
+  const id = state.activeId;
+  const name = displayName(state.thread?.conversation_name ?? null);
+  const ok = confirm(
+    `Archive this conversation with ${name}?\n\nIt moves to the Archive and leaves the inbox. You can restore it later.`,
+  );
+  if (!ok) return;
+  archiveBusy = true;
+  try {
+    await archiveConversation(id);
+    state.conversations = state.conversations.filter((c) => c.conversation_id !== id);
+    state.activeId = null;
+    state.thread = null;
+    $("threadView").hidden = true;
+    $("threadEmpty").hidden = false;
+    renderInbox();
+    setView("list");
+  } catch {
+    // leave the thread open on failure.
+  } finally {
+    archiveBusy = false;
+  }
+}
+
+async function bulkArchiveInactive(): Promise<void> {
+  const btn = $<HTMLButtonElement>("archiveInactiveBtn");
+  const status = $("archiveInactiveStatus");
+  if (btn.disabled) return;
+  const ok = confirm(
+    "Archive ALL conversations with no activity in the last 72 hours?\n\nThey move to the Archive and can be restored.",
+  );
+  if (!ok) return;
+  btn.disabled = true;
+  status.textContent = "Archiving…";
+  status.className = "editor-status";
+  try {
+    const { conversations } = await archiveInactive();
+    status.textContent = conversations
+      ? `Archived ${conversations} conversation${conversations === 1 ? "" : "s"}`
+      : "Nothing inactive to archive";
+    status.className = "editor-status is-saved";
+    state.conversations = await listConversations();
+    if (state.activeId && !state.conversations.some((c) => c.conversation_id === state.activeId)) {
+      state.activeId = null;
+      state.thread = null;
+      $("threadView").hidden = true;
+      $("threadEmpty").hidden = false;
+    }
+    renderInbox();
+  } catch {
+    status.textContent = "Couldn't archive — try again";
+    status.className = "editor-status is-error";
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function wireArchive(): void {
+  $("archiveBtn").addEventListener("click", () => void archiveActiveConversation());
+  $("archiveInactiveBtn").addEventListener("click", () => void bulkArchiveInactive());
+  const dialog = $<HTMLDialogElement>("archiveDialog");
+  $("archiveDialogX").addEventListener("click", () => dialog.close());
+  $("archiveDialogClose").addEventListener("click", () => dialog.close());
+  $("archiveDialogRestore").addEventListener("click", () => {
+    if (archiveViewId) void restoreFromArchive(archiveViewId);
+  });
+  dialog.addEventListener("close", () => {
+    archiveViewId = null;
+  });
+}
+
 // ---- Polling ----
 
 async function refresh(): Promise<void> {
@@ -558,6 +738,7 @@ async function startDashboard(): Promise<void> {
   wireBack();
   wireInstructions();
   wireFaq();
+  wireArchive();
   wireNav();
 
   state.conversations = await listConversations();

@@ -86,6 +86,13 @@
           <span class="filter-chip" data-filter="attention"><span class="dot-y"></span>Needs you</span>
           <span class="filter-chip" data-filter="unread">Unread</span>
         </div>
+        <div class="sidebar-actions">
+          <button class="btn btn--ghost btn--sm" id="archiveInactiveBtn" type="button"
+            title="Archive every conversation with no activity in the last 72 hours">
+            <svg class="icon icon--sm"><use href="/icons.svg#i-archive"/></svg> Archive inactive (72h)
+          </button>
+          <span class="editor-status" id="archiveInactiveStatus" aria-live="polite"></span>
+        </div>
       </div>
       <div class="convo-list scroll" id="convoList">
         <!-- .convo-item rows appended by admin/main.ts -->
@@ -116,6 +123,7 @@
           <div class="thread-actions">
             <span class="attn-flag" id="attnFlag" hidden><svg class="icon"><use href="/icons.svg#i-spark"/></svg> <span class="attn-text">Avatar asked for you</span></span>
             <button class="btn btn--secondary btn--sm" id="resolveBtn" title="Mark resolved"><svg class="icon icon--sm"><use href="/icons.svg#i-check"/></svg> <span class="btn-label">Mark resolved</span></button>
+            <button class="btn btn--ghost btn--sm" id="archiveBtn" title="Archive conversation"><svg class="icon icon--sm"><use href="/icons.svg#i-archive"/></svg> <span class="btn-label">Archive</span></button>
           </div>
         </div>
 
@@ -146,13 +154,40 @@
     </section>
     </section>
 
-    <!-- Archive section (built in a later phase) -->
-    <section class="section section--panel" data-section="archive" id="section-archive" hidden>
-      <div class="panel-placeholder">
-        <svg class="icon icon--xl"><use href="/icons.svg#i-archive"/></svg>
-        <h2>Archive</h2>
-        <p>Archived conversations will live here.</p>
+    <!-- Archive section -->
+    <section class="section section--archive" data-section="archive" id="section-archive" hidden>
+      <div class="archive-wrap">
+        <div class="archive-head">
+          <div class="archive-head-text">
+            <h2><svg class="icon"><use href="/icons.svg#i-archive"/></svg> Archive <span class="count-badge" id="archiveCount">0</span></h2>
+            <p>Conversations you've moved out of the inbox. Open one to read it, or restore it to
+              the inbox. Restoring keeps the messages and timestamps.</p>
+            <span class="editor-status" id="archiveStatus" aria-live="polite"></span>
+          </div>
+        </div>
+        <div class="archive-list scroll" id="archiveList"><!-- cards rendered by admin/main.ts --></div>
       </div>
+
+      <dialog class="archive-dialog" id="archiveDialog">
+        <div class="archive-dialog-body">
+          <div class="archive-dialog-head">
+            <div class="thread-id">
+              <span class="avatar-initials" id="archiveInitials"></span>
+              <div class="meta">
+                <span class="name" id="archiveDialogName"></span>
+                <span class="sub" id="archiveDialogSub"></span>
+              </div>
+            </div>
+            <button class="icon-btn" id="archiveDialogX" type="button" aria-label="Close"><svg class="icon icon--sm"><use href="/icons.svg#i-close"/></svg></button>
+          </div>
+          <div class="archive-dialog-thread scroll" id="archiveDialogThread"><!-- read-only bubbles --></div>
+          <div class="archive-dialog-actions">
+            <span class="editor-status" id="archiveDialogStatus" aria-live="polite"></span>
+            <button type="button" class="btn btn--ghost" id="archiveDialogClose">Close</button>
+            <button type="button" class="btn btn--primary" id="archiveDialogRestore"><svg class="icon icon--sm"><use href="/icons.svg#i-reset"/></svg> Restore</button>
+          </div>
+        </div>
+      </dialog>
     </section>
 
     <!-- Instructions section -->

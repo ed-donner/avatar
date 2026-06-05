@@ -1,6 +1,6 @@
 """Supabase access layer: the only module that talks to the database."""
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from functools import lru_cache
 
 from supabase import Client, create_client
@@ -8,9 +8,11 @@ from supabase import Client, create_client
 from app.config import get_settings
 
 TABLE = "messages"
+ARCHIVE_TABLE = "archive"
 FAQ_TABLE = "faq"
 SETTINGS_TABLE = "app_settings"
 
+INACTIVE_HOURS = 72  # bulk-archive threshold: conversations idle this long
 
 PAGE = 1000  # PostgREST's default (and max) rows per request
 
@@ -22,13 +24,17 @@ def get_client() -> Client:
     return create_client(settings.supabase_url, settings.supabase_key)
 
 
-def _all_rows(table: str) -> list[dict]:
-    """Every row of a table ordered by id, paging past PostgREST's row cap."""
+def _all_rows(table: str, conversation_id: str | None = None) -> list[dict]:
+    """Every row of a table (optionally one conversation) ordered by id, paging
+    past PostgREST's row cap so a large result is never silently truncated."""
     client = get_client()
     rows: list[dict] = []
     start = 0
     while True:
-        batch = client.table(table).select("*").order("id").range(start, start + PAGE - 1).execute().data
+        query = client.table(table).select("*")
+        if conversation_id is not None:
+            query = query.eq("conversation_id", conversation_id)
+        batch = query.order("id").range(start, start + PAGE - 1).execute().data
         rows.extend(batch)
         if len(batch) < PAGE:
             return rows
@@ -67,9 +73,10 @@ def get_messages(conversation_id: str, after_id: int | None = None) -> list[dict
     return query.order("id").execute().data
 
 
-def list_conversations() -> list[dict]:
-    """One summary per conversation, most recent first."""
-    rows = _all_rows(TABLE)
+def _summaries(rows: list[dict]) -> list[dict]:
+    """One summary per conversation (most recent first) from a flat list of rows.
+    Rows arrive id-ascending (from _all_rows), so each group is already in order.
+    """
     grouped: dict[str, list[dict]] = {}
     for row in rows:
         grouped.setdefault(row["conversation_id"], []).append(row)
@@ -92,6 +99,16 @@ def list_conversations() -> list[dict]:
         )
     summaries.sort(key=lambda s: s["last_created_at"], reverse=True)
     return summaries
+
+
+def list_conversations() -> list[dict]:
+    """One summary per live conversation, most recent first."""
+    return _summaries(_all_rows(TABLE))
+
+
+def list_archived_conversations() -> list[dict]:
+    """One summary per archived conversation, most recent first."""
+    return _summaries(_all_rows(ARCHIVE_TABLE))
 
 
 def open_conversation(conversation_id: str) -> list[dict]:
@@ -119,6 +136,75 @@ def clear_attention(conversation_id: str) -> None:
 def latest_name(rows: list[dict]) -> str | None:
     """Latest non-null conversation_name among already-fetched rows (no query)."""
     return next((r["conversation_name"] for r in reversed(rows) if r["conversation_name"]), None)
+
+
+# ---- Archive ----
+
+
+def get_archived_messages(conversation_id: str) -> list[dict]:
+    """All archived rows of a conversation, id ascending (read-only view)."""
+    return (
+        get_client()
+        .table(ARCHIVE_TABLE)
+        .select("*")
+        .eq("conversation_id", conversation_id)
+        .order("id")
+        .execute()
+        .data
+    )
+
+
+def _move_conversation(conversation_id: str, src: str, dst: str, *, keep_id: bool) -> int:
+    """Copy a whole conversation's rows from src into dst, then delete from src.
+    Returns the rows moved. The full thread is read with pagination (so a long
+    conversation is never partially copied before the unbounded delete), the
+    destination is cleared first so a retry after a partial failure converges
+    instead of colliding on the primary key, and the src delete runs last so a
+    failed copy never loses data.
+
+    keep_id is True for messages -> archive (archive.id is a plain column, so the
+    original ids and timestamps are preserved). It is False for archive -> messages:
+    messages.id is GENERATED ALWAYS, so the id is dropped and reassigned, while
+    created_at, content, order, and read state are preserved.
+    """
+    rows = _all_rows(src, conversation_id=conversation_id)
+    if not rows:
+        return 0
+    payload = rows if keep_id else [{k: v for k, v in r.items() if k != "id"} for r in rows]
+    client = get_client()
+    client.table(dst).delete().eq("conversation_id", conversation_id).execute()
+    client.table(dst).insert(payload).execute()
+    client.table(src).delete().eq("conversation_id", conversation_id).execute()
+    return len(rows)
+
+
+def archive_conversation(conversation_id: str) -> int:
+    """Move a whole conversation from messages into the archive."""
+    return _move_conversation(conversation_id, TABLE, ARCHIVE_TABLE, keep_id=True)
+
+
+def restore_conversation(conversation_id: str) -> int:
+    """Move a whole conversation from the archive back into messages."""
+    return _move_conversation(conversation_id, ARCHIVE_TABLE, TABLE, keep_id=False)
+
+
+def inactive_conversation_ids(cutoff: datetime) -> list[str]:
+    """conversation_ids in messages whose latest message predates cutoff."""
+    latest: dict[str, str] = {}
+    for row in _all_rows(TABLE):
+        cid = row["conversation_id"]
+        if cid not in latest or row["created_at"] > latest[cid]:
+            latest[cid] = row["created_at"]
+    cutoff_iso = cutoff.isoformat()
+    return [cid for cid, ts in latest.items() if ts < cutoff_iso]
+
+
+def archive_inactive() -> dict:
+    """Archive every conversation idle for at least INACTIVE_HOURS. Returns counts."""
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=INACTIVE_HOURS)
+    cids = inactive_conversation_ids(cutoff)
+    messages = sum(archive_conversation(cid) for cid in cids)
+    return {"conversations": len(cids), "messages": messages}
 
 
 def list_faqs() -> list[dict]:

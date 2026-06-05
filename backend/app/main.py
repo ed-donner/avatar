@@ -221,6 +221,48 @@ def admin_resolve(conversation_id: str) -> dict:
     return {"ok": True}
 
 
+# ---- Archive ----
+
+
+@admin.post("/conversations/{conversation_id}/archive", dependencies=[Depends(require_admin)])
+def admin_archive_conversation(conversation_id: str) -> dict:
+    """Move a whole conversation from the inbox into the archive."""
+    return {"ok": True, "messages": db.archive_conversation(conversation_id)}
+
+
+@admin.post("/archive-inactive", dependencies=[Depends(require_admin)])
+def admin_archive_inactive() -> dict:
+    """Archive every conversation with no activity in the last 72 hours."""
+    return db.archive_inactive()
+
+
+@admin.get("/archive", response_model=list[ConversationSummary], dependencies=[Depends(require_admin)])
+def admin_list_archive() -> list[ConversationSummary]:
+    """Archived conversation summaries, most recent first."""
+    return [ConversationSummary(**s) for s in db.list_archived_conversations()]
+
+
+@admin.get(
+    "/archive/{conversation_id}",
+    response_model=ConversationThread,
+    dependencies=[Depends(require_admin)],
+)
+def admin_get_archived(conversation_id: str) -> ConversationThread:
+    """Read-only view of an archived conversation (does not change any state)."""
+    rows = db.get_archived_messages(conversation_id)
+    return ConversationThread(
+        conversation_id=conversation_id,
+        conversation_name=db.latest_name(rows),
+        messages=[Message(**row) for row in rows],
+    )
+
+
+@admin.post("/archive/{conversation_id}/restore", dependencies=[Depends(require_admin)])
+def admin_restore_conversation(conversation_id: str) -> dict:
+    """Move a whole conversation from the archive back into the inbox."""
+    return {"ok": True, "messages": db.restore_conversation(conversation_id)}
+
+
 @admin.get("/instructions", response_model=InstructionsBody, dependencies=[Depends(require_admin)])
 def admin_get_instructions() -> InstructionsBody:
     """The current additional system-prompt instructions."""

@@ -204,8 +204,10 @@ The enhancements in [MORE.md](MORE.md) add three new admin sections - **Archive*
 
 ```sql
 -- 1. archive: holds whole conversations moved out of `messages`.
---    Mirrors messages exactly, but `id` and `created_at` are NOT auto-generated
---    so a restored conversation round-trips with its original ids and timestamps.
+--    Mirrors messages, but `id` is a plain column (NOT identity) so archiving
+--    preserves each message's original id and timestamp. (Restoring re-inserts
+--    into `messages`, whose id is GENERATED ALWAYS, so restored rows get fresh
+--    ids; their timestamps, content, order, and read state are preserved.)
 create table public.archive (
   id              bigint primary key,
   conversation_id uuid not null,

@@ -151,6 +151,35 @@ export async function resolveConversation(id: string): Promise<void> {
   });
 }
 
+// ---- Archive ----
+
+async function postOk(url: string): Promise<void> {
+  const res = await fetch(url, { method: "POST", credentials: "same-origin" });
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+}
+
+export function listArchive(): Promise<ConversationSummary[]> {
+  return fetch("/admin/archive", adminInit).then((r) => json<ConversationSummary[]>(r));
+}
+
+export function getArchivedConversation(id: string): Promise<ConversationThread> {
+  return fetch(`/admin/archive/${id}`, adminInit).then((r) => json<ConversationThread>(r));
+}
+
+export function archiveConversation(id: string): Promise<void> {
+  return postOk(`/admin/conversations/${id}/archive`);
+}
+
+export function restoreConversation(id: string): Promise<void> {
+  return postOk(`/admin/archive/${id}/restore`);
+}
+
+export function archiveInactive(): Promise<{ conversations: number; messages: number }> {
+  return fetch("/admin/archive-inactive", { method: "POST", credentials: "same-origin" }).then((r) =>
+    json<{ conversations: number; messages: number }>(r),
+  );
+}
+
 export function getInstructions(): Promise<Instructions> {
   return fetch("/admin/instructions", adminInit).then((r) => json<Instructions>(r));
 }

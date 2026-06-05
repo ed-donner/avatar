@@ -17,9 +17,10 @@ precedes the Instructions / FAQ-editor / Archive admin UI.
 
 ### Snapshot
 - **Branch:** `more-build` (NOT `more`; base branch is `main`). Working tree clean.
-- **Done:** Phases 0,1,2,3,4,5. **Remaining:** Phases 6 (Archive), 7 (Download+Total),
+- **Done:** Phases 0,1,2,3,4,5,6. **Remaining:** Phases 7 (Download+Total),
   8 (Web Fetch MCP), 9 (Full E2E & Docker).
-- **Next action:** Phase 6 (Archive) - was about to start; paused here on request to write this record.
+- **Next action:** Phase 7 (Download + Total) - jsonl export endpoints + Download button + total count
+  on Conversations and Archive pages.
 
 ### Commits (one per phase, on `more-build`)
 - `a4a5f68` "Fixed doc" - the OWNER's edits to MORE.md (`?m=` query string, Q54 fix) before work began
@@ -28,7 +29,9 @@ precedes the Instructions / FAQ-editor / Archive admin UI.
 - `c787659` Phase 2 - move FAQ to Supabase + fix conversation list pagination
 - `b5e9936` Phase 3 - admin main nav scaffolding + fix app-wide icon rendering
 - `da5eea4` Phase 4 - admin-editable additional instructions
-- `1d734fb` Phase 5 - admin FAQ editor (CRUD over the faq table)  **<- current HEAD**
+- `1d734fb` Phase 5 - admin FAQ editor (CRUD over the faq table)
+- `6b27325` Docs - Project Status & Handoff Record
+- (next commit) Phase 6 - archive/restore/72h-bulk + Archive admin tab  **<- HEAD after this commit**
 
 ### Deployment state  (IMPORTANT)
 - Production = fly.io app `avatar-ed` (region `sjc`), public at `avatar.edwarddonner.com`
@@ -37,10 +40,11 @@ precedes the Instructions / FAQ-editor / Archive admin UI.
 - The owner deployed **once, after Phase 2**, so **production runs Phase 0-2 code** (`c787659`).
   LIVE today: the conversation-pagination fix, FAQ-served-from-Supabase, the 4-tier visitor polling,
   the `?m=` deep link, and the OG image.
-- **Phases 3, 4, 5 are committed locally but NOT deployed.** So the live site does NOT yet have:
+- **Phases 3-6 are committed locally but NOT deployed.** So the live site does NOT yet have:
   the **icon-rendering fix** (live icons still render as solid silhouettes - see bug #2 below),
-  the admin 4-tab nav, additional-instructions, or the FAQ editor. The owner can deploy whenever;
-  the icon fix + admin features all ship together on the next deploy.
+  the admin 4-tab nav, additional-instructions, the FAQ editor, or the **Archive** tab / archive+restore
+  / 72h bulk-archive. The owner can deploy whenever; the icon fix + all admin features ship together on
+  the next deploy. (Phase 6 needs the `archive` table, already created in Phase 0's README DDL.)
 
 ### Environment & key facts
 - **Single Supabase DB (`vsdbgmlilyduqkybcltg`) IS production** - shared by local dev, the test
@@ -89,9 +93,17 @@ precedes the Instructions / FAQ-editor / Archive admin UI.
    - Phase 5.5: **MEDIUM** blank FAQ fields accepted by the API -> server-side `min_length` validation;
      **MEDIUM** edit dialog could clip Save/Cancel on short viewports -> `max-height` + body scroll;
      **MEDIUM** `Qn`/`?q=N` capped at 2 digits while the editor grows ids past 99 -> widened to 3 digits.
+   - Phase 6.4: **MEDIUM** archive copy used an unpaginated select then an unbounded delete (a >1000-row
+     thread would lose rows 1001+ - SAME class as the Phase 2.5 prod bug) -> paginated copy via
+     `_all_rows(..., conversation_id=)`; **MEDIUM** non-atomic move left a conversation in both tables on
+     partial failure and crashed on the archive PK on retry -> clear-dst-first idempotency (+ a test that
+     seeds the both-tables state); **MEDIUM** card-path Restore failed silently when the dialog was closed
+     plus **LOW** concurrent-restore-drop / ghost-card -> per-conversation `restoringIds` guard, optimistic
+     removal, and an `#archiveStatus` error line; **LOW** identical `aria-label="Restore"` -> per-conversation
+     label; **LOW** restore didn't assert read/attention preservation -> added the assertions.
 
 ### Testing completed
-- **Backend pytest: 63 passing** (`cd backend && uv run pytest -q`). Tests hit the real Supabase and the
+- **Backend pytest: 70 passing** (`cd backend && uv run pytest -q`). Tests hit the real Supabase and the
   LLM (mini) - allowed/cheap per SPEC. Files added/changed: `test_supabase_connection.py` (new-table
   column checks), `test_instructions.py`, `test_faq_admin.py`, `test_knowledge.py`, `test_agent.py`.
 - **Per-phase Playwright E2E on the real served app** (not just mocks): P1 `?m=`/`?q=`; P2 the actual
@@ -111,10 +123,13 @@ test data/screenshots -> tick the boxes in this file -> commit once for the phas
 `Co-Authored-By: Claude Opus 4.8 (1M context)` trailer). Never deploy.
 
 ### Notes for the remaining phases
-- **Phase 6 (Archive) is the most destructive** - it deletes rows from `messages` into `archive`.
-  Extra care: only archive throwaway conversations you create; never a real user thread. The 72h
-  bulk-archive must be exercised only against self-created rows. `conftest` cleanup must also purge the
-  `archive` table for test ids. The `archive` table already exists and preserves ids/timestamps.
+- **Phase 6 (Archive) DONE.** Built archive/restore/72h-bulk + the Archive admin tab. Key learning:
+  `messages.id` is `GENERATED ALWAYS`, so restore (archive->messages) **reassigns ids** - it does NOT
+  round-trip the original message ids (timestamps/content/order/read ARE preserved; the archive table
+  keeps original ids). The earlier "preserve ids/timestamps" wording was corrected in the README. The
+  72h bulk path was tested only via a monkeypatched selector (a real run would archive every inactive
+  production conversation), and all archive E2E used throwaway conversations cleaned up afterwards
+  (archive table verified back to 0 rows).
 - **Known accepted edge (not a bug):** new FAQ ids are `max(id)+1` in app code (fine for a single
   admin); deleting the highest-numbered FAQ frees that number for reuse, so a previously-shared `?q=N`
   link could later resolve to different content. Left as-is, flagged to the owner.
@@ -198,12 +213,27 @@ test data/screenshots -> tick the boxes in this file -> commit once for the phas
 
 ## Phase 6 - Archive
 
-- [ ] 6.1 Backend: `archive` model + db functions - archive a conversation (copy rows to
-      `archive`, delete from `messages`), restore (reverse), list archive, archive-inactive-72h
-      (max `created_at` per conversation < cutoff, bulk, returns count). Preserve ids/timestamps.
-- [ ] 6.2 Admin: thread-level Archive button (by "Mark resolved"); Archive tab list + Restore;
-      "Archive all inactive 72h" button with a confirm step.
-- [ ] 6.3 `conftest` cleanup also purges `archive` for test ids; tests.
+- [x] 6.1 Backend db functions in `db.py`: `archive_conversation` / `restore_conversation`
+      (`_move_conversation`: read full thread via `_all_rows(..., conversation_id=)`, clear dst for
+      that cid, insert, then delete src - copy-before-delete + idempotent retry), `list_archived_conversations`
+      / `get_archived_messages`, `inactive_conversation_ids(cutoff)` (read-only) + `archive_inactive()`
+      (now-72h, bulk, returns `{conversations, messages}`). 5 admin endpoints in `main.py`
+      (POST `/conversations/{id}/archive`, POST `/archive-inactive`, GET `/archive`,
+      GET `/archive/{id}`, POST `/archive/{id}/restore`). **IMPORTANT id correction:** `messages.id`
+      is `GENERATED ALWAYS`, so archive->messages **reassigns ids**; created_at/content/order/read are
+      preserved. archive table keeps original ids. (Proven empirically before coding; README comment fixed.)
+- [x] 6.2 Admin UI: thread-level Archive button (by "Mark resolved"); sidebar "Archive inactive (72h)"
+      button (confirm); Archive tab = count + card list + read-only view `<dialog>` + Restore (card and
+      dialog). `api.ts` client fns. Restore is per-conversation guarded (`restoringIds` set) with
+      optimistic removal + visible error on the card path.
+- [x] 6.3 `conftest` `conversation_id` fixture purges BOTH `messages` and `archive`. `test_archive.py`
+      (guards x5, archive-out-of-inbox, restore-reassigns-ids+preserves read/attention, idempotent-retry,
+      missing-conversation no-op, inactive selection read-only, bulk via monkeypatched selector). 70 backend tests pass.
+- [x] 6.4 Adversarial review (13 agents): fixed MEDIUM unpaginated-copy-then-unbounded-delete data-loss
+      landmine (>1000-row thread; same class as Phase 2.5) -> paginated copy; MEDIUM non-atomic move /
+      PK-collision-on-retry -> clear-dst-first idempotency (+ test); MEDIUM silent card-restore failure +
+      LOW concurrent-restore-drop + LOW ghost-card -> per-id guard, optimistic removal, `#archiveStatus`;
+      LOW duplicate aria-label; LOW missing read-state assertion.
 
 ## Phase 7 - Download + Total
 

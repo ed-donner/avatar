@@ -35,10 +35,13 @@ def admin_client(client):
 
 @pytest.fixture
 def conversation_id():
-    """A random conversation id whose rows are deleted after the test."""
+    """A random conversation id whose rows are deleted after the test.
+    Purges both messages and archive so archive tests leave nothing behind.
+    """
     cid = str(uuid.uuid4())
     yield cid
     db.get_client().table(db.TABLE).delete().eq("conversation_id", cid).execute()
+    db.get_client().table(db.ARCHIVE_TABLE).delete().eq("conversation_id", cid).execute()
 
 
 def make_conversation(cid: str, messages: list[dict]) -> list[dict]:
