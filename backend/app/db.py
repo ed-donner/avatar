@@ -111,6 +111,16 @@ def list_archived_conversations() -> list[dict]:
     return _summaries(_all_rows(ARCHIVE_TABLE))
 
 
+def all_message_rows() -> list[dict]:
+    """Every message row, id order (for the jsonl export)."""
+    return _all_rows(TABLE)
+
+
+def all_archive_rows() -> list[dict]:
+    """Every archived row, id order (for the jsonl export)."""
+    return _all_rows(ARCHIVE_TABLE)
+
+
 def open_conversation(conversation_id: str) -> list[dict]:
     """Open a thread in ONE round-trip: mark every row read + clear attention and
     return the updated rows (PostgREST returns the representation). Rows come back

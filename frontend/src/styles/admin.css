@@ -124,7 +124,12 @@ body { height: 100dvh; overflow: hidden; }
   background: var(--surface-0); }
 .archive-wrap { width: 100%; max-width: 920px; margin: 0 auto; flex: 1; min-height: 0;
   display: flex; flex-direction: column; padding: var(--space-6) var(--space-6) 0; }
-.archive-head { margin-bottom: var(--space-4); }
+.archive-head { margin-bottom: var(--space-4); display: flex; align-items: flex-start;
+  justify-content: space-between; gap: var(--space-4); }
+.archive-head-text { min-width: 0; }
+.archive-head-actions { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: var(--space-1); }
+.archive-head-actions .editor-status { font-size: var(--text-xs); }
+.archive-head .btn { flex: none; }
 .archive-head h2 { margin: 0 0 var(--space-2); font-family: var(--font-display); font-weight: 600;
   font-size: var(--text-xl); display: flex; align-items: center; gap: var(--space-2); }
 .archive-head h2 .icon { color: var(--blue-strong); }
@@ -278,6 +283,7 @@ body { height: 100dvh; overflow: hidden; }
   .faq-dialog-body { padding: var(--space-4); }
 
   .archive-wrap { padding: var(--space-4) var(--space-4) 0; }
+  .archive-head { flex-direction: column; gap: var(--space-3); }
   .archive-dialog { width: 96vw; }
   .archive-dialog-head, .archive-dialog-thread, .archive-dialog-actions { padding-left: var(--space-4); padding-right: var(--space-4); }
 

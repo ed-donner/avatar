@@ -9,6 +9,8 @@ import {
   archiveInactive,
   createFaq,
   deleteFaq,
+  downloadArchive,
+  downloadConversations,
   getArchivedConversation,
   getConfig,
   getConversationAdmin,
@@ -545,6 +547,7 @@ async function loadArchive(): Promise<void> {
 function renderArchiveList(): void {
   const list = $("archiveList");
   $("archiveCount").textContent = String(state.archive.length);
+  $<HTMLButtonElement>("downloadArchiveBtn").disabled = state.archive.length === 0;
   list.replaceChildren();
   if (!state.archive.length) {
     list.innerHTML = `<div class="convo-empty">No archived conversations yet.</div>`;
@@ -686,6 +689,35 @@ async function bulkArchiveInactive(): Promise<void> {
   }
 }
 
+/** Run a download, disabling its button and surfacing failures to a status line. */
+async function runDownload(
+  btn: HTMLButtonElement,
+  status: HTMLElement,
+  fn: () => Promise<void>,
+): Promise<void> {
+  if (btn.disabled) return;
+  btn.disabled = true;
+  try {
+    await fn();
+    status.textContent = "";
+    status.className = "editor-status";
+  } catch {
+    status.textContent = "Couldn't download — try again";
+    status.className = "editor-status is-error";
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function wireDownloads(): void {
+  $("downloadConvosBtn").addEventListener("click", () =>
+    void runDownload($<HTMLButtonElement>("downloadConvosBtn"), $("downloadConvosStatus"), downloadConversations),
+  );
+  $("downloadArchiveBtn").addEventListener("click", () =>
+    void runDownload($<HTMLButtonElement>("downloadArchiveBtn"), $("downloadArchiveStatus"), downloadArchive),
+  );
+}
+
 function wireArchive(): void {
   $("archiveBtn").addEventListener("click", () => void archiveActiveConversation());
   $("archiveInactiveBtn").addEventListener("click", () => void bulkArchiveInactive());
@@ -739,6 +771,7 @@ async function startDashboard(): Promise<void> {
   wireInstructions();
   wireFaq();
   wireArchive();
+  wireDownloads();
   wireNav();
 
   state.conversations = await listConversations();

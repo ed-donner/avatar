@@ -180,6 +180,34 @@ export function archiveInactive(): Promise<{ conversations: number; messages: nu
   );
 }
 
+// ---- Export (download jsonl) ----
+
+/** Fetch a jsonl export and save it, honouring the server's Content-Disposition filename. */
+async function downloadJsonl(url: string, fallback: string): Promise<void> {
+  const res = await fetch(url, adminInit);
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  const disposition = res.headers.get("Content-Disposition") ?? "";
+  const match = disposition.match(/filename="?([^"]+)"?/);
+  const filename = match ? match[1] : fallback;
+  const blob = await res.blob();
+  const href = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = href;
+  link.download = filename;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(href);
+}
+
+export function downloadConversations(): Promise<void> {
+  return downloadJsonl("/admin/export/conversations", "conversations.jsonl");
+}
+
+export function downloadArchive(): Promise<void> {
+  return downloadJsonl("/admin/export/archive", "archive.jsonl");
+}
+
 export function getInstructions(): Promise<Instructions> {
   return fetch("/admin/instructions", adminInit).then((r) => json<Instructions>(r));
 }

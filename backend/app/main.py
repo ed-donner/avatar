@@ -1,7 +1,9 @@
 """FastAPI app: public + admin APIs, SSE chat, and static frontend serving."""
 
+import json
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Cookie, Depends, FastAPI, HTTPException, Request, Response
 from fastapi.responses import FileResponse
@@ -261,6 +263,32 @@ def admin_get_archived(conversation_id: str) -> ConversationThread:
 def admin_restore_conversation(conversation_id: str) -> dict:
     """Move a whole conversation from the archive back into the inbox."""
     return {"ok": True, "messages": db.restore_conversation(conversation_id)}
+
+
+# ---- Export (one JSON object per message row) ----
+
+
+def _jsonl_response(rows: list[dict], prefix: str) -> Response:
+    """A downloadable jsonl file: one JSON object per row, timestamped filename."""
+    body = "\n".join(json.dumps(row, ensure_ascii=False, default=str) for row in rows)
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    return Response(
+        content=body,
+        media_type="application/x-ndjson",
+        headers={"Content-Disposition": f'attachment; filename="{prefix}-{stamp}.jsonl"'},
+    )
+
+
+@admin.get("/export/conversations", dependencies=[Depends(require_admin)])
+def admin_export_conversations() -> Response:
+    """Download every live message row as jsonl."""
+    return _jsonl_response(db.all_message_rows(), "conversations")
+
+
+@admin.get("/export/archive", dependencies=[Depends(require_admin)])
+def admin_export_archive() -> Response:
+    """Download every archived message row as jsonl."""
+    return _jsonl_response(db.all_archive_rows(), "archive")
 
 
 @admin.get("/instructions", response_model=InstructionsBody, dependencies=[Depends(require_admin)])

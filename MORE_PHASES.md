@@ -17,10 +17,10 @@ precedes the Instructions / FAQ-editor / Archive admin UI.
 
 ### Snapshot
 - **Branch:** `more-build` (NOT `more`; base branch is `main`). Working tree clean.
-- **Done:** Phases 0,1,2,3,4,5,6. **Remaining:** Phases 7 (Download+Total),
-  8 (Web Fetch MCP), 9 (Full E2E & Docker).
-- **Next action:** Phase 7 (Download + Total) - jsonl export endpoints + Download button + total count
-  on Conversations and Archive pages.
+- **Done:** Phases 0,1,2,3,4,5,6,7. **Remaining:** Phases 8 (Web Fetch MCP), 9 (Full E2E & Docker).
+- **Next action:** Phase 8 (Web Fetch MCP) - wire `MCPServerStdio('mcp-server-fetch')` per chat turn
+  with reference INSTRUCTIONS; Dockerfile preinstall; show the fetch tool in the UI. Use the
+  `openai-mcp` skill and `reference/fetch.ipynb`.
 
 ### Commits (one per phase, on `more-build`)
 - `a4a5f68` "Fixed doc" - the OWNER's edits to MORE.md (`?m=` query string, Q54 fix) before work began
@@ -31,7 +31,8 @@ precedes the Instructions / FAQ-editor / Archive admin UI.
 - `da5eea4` Phase 4 - admin-editable additional instructions
 - `1d734fb` Phase 5 - admin FAQ editor (CRUD over the faq table)
 - `6b27325` Docs - Project Status & Handoff Record
-- (next commit) Phase 6 - archive/restore/72h-bulk + Archive admin tab  **<- HEAD after this commit**
+- `4d08dfa` Phase 6 - archive/restore/72h-bulk + Archive admin tab
+- (next commit) Phase 7 - jsonl Download endpoints + buttons (Total already shown by count badges)  **<- HEAD after this commit**
 
 ### Deployment state  (IMPORTANT)
 - Production = fly.io app `avatar-ed` (region `sjc`), public at `avatar.edwarddonner.com`
@@ -40,11 +41,12 @@ precedes the Instructions / FAQ-editor / Archive admin UI.
 - The owner deployed **once, after Phase 2**, so **production runs Phase 0-2 code** (`c787659`).
   LIVE today: the conversation-pagination fix, FAQ-served-from-Supabase, the 4-tier visitor polling,
   the `?m=` deep link, and the OG image.
-- **Phases 3-6 are committed locally but NOT deployed.** So the live site does NOT yet have:
+- **Phases 3-7 are committed locally but NOT deployed.** So the live site does NOT yet have:
   the **icon-rendering fix** (live icons still render as solid silhouettes - see bug #2 below),
-  the admin 4-tab nav, additional-instructions, the FAQ editor, or the **Archive** tab / archive+restore
-  / 72h bulk-archive. The owner can deploy whenever; the icon fix + all admin features ship together on
-  the next deploy. (Phase 6 needs the `archive` table, already created in Phase 0's README DDL.)
+  the admin 4-tab nav, additional-instructions, the FAQ editor, the **Archive** tab / archive+restore
+  / 72h bulk-archive, or the **Download** (jsonl export) buttons. The owner can deploy whenever; the
+  icon fix + all admin features ship together on the next deploy. (Needs the `archive` table, already
+  created in Phase 0's README DDL.)
 
 ### Environment & key facts
 - **Single Supabase DB (`vsdbgmlilyduqkybcltg`) IS production** - shared by local dev, the test
@@ -101,9 +103,12 @@ precedes the Instructions / FAQ-editor / Archive admin UI.
      plus **LOW** concurrent-restore-drop / ghost-card -> per-conversation `restoringIds` guard, optimistic
      removal, and an `#archiveStatus` error line; **LOW** identical `aria-label="Restore"` -> per-conversation
      label; **LOW** restore didn't assert read/attention preservation -> added the assertions.
+   - Phase 7.4: **LOW** Download buttons reused the shared archive/restore status lines (a successful
+     download blanked a just-shown "Archived N" message; errors collided) -> dedicated
+     `#downloadConvosStatus` / `#downloadArchiveStatus` spans.
 
 ### Testing completed
-- **Backend pytest: 70 passing** (`cd backend && uv run pytest -q`). Tests hit the real Supabase and the
+- **Backend pytest: 73 passing** (`cd backend && uv run pytest -q`). Tests hit the real Supabase and the
   LLM (mini) - allowed/cheap per SPEC. Files added/changed: `test_supabase_connection.py` (new-table
   column checks), `test_instructions.py`, `test_faq_admin.py`, `test_knowledge.py`, `test_agent.py`.
 - **Per-phase Playwright E2E on the real served app** (not just mocks): P1 `?m=`/`?q=`; P2 the actual
@@ -237,9 +242,25 @@ test data/screenshots -> tick the boxes in this file -> commit once for the phas
 
 ## Phase 7 - Download + Total
 
-- [ ] 7.1 Backend export endpoints (jsonl, one object per message row) for conversations + archive.
-- [ ] 7.2 Admin: Download button + total count near the top of both pages.
-- [ ] 7.3 Tests.
+- [x] 7.1 Backend export endpoints: GET `/admin/export/conversations` + `/admin/export/archive`
+      (admin-guarded) return jsonl, **one JSON object per message row** mirroring the table, via
+      `_jsonl_response` (Response, `application/x-ndjson`, `Content-Disposition` with a timestamped
+      `<prefix>-<UTCstamp>.jsonl` filename). Rows from new public `db.all_message_rows` /
+      `all_archive_rows` (paginated via `_all_rows`). Routes under `/export/*` to avoid colliding with
+      `/conversations/{id}` (verified 401, not 404).
+- [x] 7.2 Admin: Download button on the Conversations sidebar (`.sidebar-actions`, beside "Archive
+      inactive (72h)") and the Archive head; `api.ts` `downloadJsonl` (fetch->blob->anchor, honours the
+      server filename) + `runDownload` wrapper (disable button, per-button status). Archive Download
+      auto-disabled when empty. **Total** count requirement satisfied by the existing count badges
+      (`#convoCount` / `#archiveCount`) next to each page heading.
+- [x] 7.3 `test_export.py` (401 guards x2, conversations jsonl shape + filename header + columns,
+      archive jsonl). 73 backend tests pass. E2E: real downloads on both pages (timestamped filenames;
+      conversations = 1757 message objects / 254 conversations; archive = the archived rows), archive
+      Download disabled-when-empty verified, no console errors; downloads + throwaway data cleaned up.
+- [x] 7.4 Adversarial review (4 agents, 1 confirmed LOW): Download buttons reused the shared
+      `#archiveInactiveStatus` / `#archiveStatus` lines -> a successful download blanked a just-shown
+      "Archived N" confirmation and download errors collided with archive/restore messages. Fixed with
+      dedicated `#downloadConvosStatus` / `#downloadArchiveStatus` spans.
 
 ## Phase 8 - Web Fetch MCP
 

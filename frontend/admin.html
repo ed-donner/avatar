@@ -91,7 +91,12 @@
             title="Archive every conversation with no activity in the last 72 hours">
             <svg class="icon icon--sm"><use href="/icons.svg#i-archive"/></svg> Archive inactive (72h)
           </button>
+          <button class="btn btn--ghost btn--sm" id="downloadConvosBtn" type="button"
+            title="Download all conversations as a jsonl file">
+            <svg class="icon icon--sm"><use href="/icons.svg#i-download"/></svg> Download
+          </button>
           <span class="editor-status" id="archiveInactiveStatus" aria-live="polite"></span>
+          <span class="editor-status" id="downloadConvosStatus" aria-live="polite"></span>
         </div>
       </div>
       <div class="convo-list scroll" id="convoList">
@@ -163,6 +168,13 @@
             <p>Conversations you've moved out of the inbox. Open one to read it, or restore it to
               the inbox. Restoring keeps the messages and timestamps.</p>
             <span class="editor-status" id="archiveStatus" aria-live="polite"></span>
+          </div>
+          <div class="archive-head-actions">
+            <button class="btn btn--ghost btn--sm" id="downloadArchiveBtn" type="button"
+              title="Download the archive as a jsonl file">
+              <svg class="icon icon--sm"><use href="/icons.svg#i-download"/></svg> Download
+            </button>
+            <span class="editor-status" id="downloadArchiveStatus" aria-live="polite"></span>
           </div>
         </div>
         <div class="archive-list scroll" id="archiveList"><!-- cards rendered by admin/main.ts --></div>
