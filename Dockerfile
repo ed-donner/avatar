@@ -20,6 +20,10 @@ FROM python:3.12-slim AS runtime
 # uv as the Python package manager (latest).
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
+# Pre-install the web-fetch MCP server onto PATH so the first chat doesn't pay a
+# download (the agent launches it per turn as `mcp-server-fetch`; see app/agent.py).
+RUN UV_TOOL_BIN_DIR=/usr/local/bin uv tool install mcp-server-fetch
+
 WORKDIR /app
 
 # Install backend dependencies first (cached unless lockfile changes).

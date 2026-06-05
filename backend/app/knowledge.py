@@ -26,6 +26,12 @@ def style_text() -> str:
 
 
 @lru_cache
+def fetch_text() -> str:
+    """The owner-specific source list for the web-fetch tool (fetch.md)."""
+    return (get_settings().knowledge_dir / "fetch.md").read_text(encoding="utf-8")
+
+
+@lru_cache
 def _load_faqs() -> tuple[list[dict], dict[int, dict]]:
     """Load FAQs from the Supabase faq table (the source of truth).
 

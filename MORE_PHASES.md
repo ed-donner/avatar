@@ -17,10 +17,11 @@ precedes the Instructions / FAQ-editor / Archive admin UI.
 
 ### Snapshot
 - **Branch:** `more-build` (NOT `more`; base branch is `main`). Working tree clean.
-- **Done:** Phases 0,1,2,3,4,5,6,7. **Remaining:** Phases 8 (Web Fetch MCP), 9 (Full E2E & Docker).
-- **Next action:** Phase 8 (Web Fetch MCP) - wire `MCPServerStdio('mcp-server-fetch')` per chat turn
-  with reference INSTRUCTIONS; Dockerfile preinstall; show the fetch tool in the UI. Use the
-  `openai-mcp` skill and `reference/fetch.ipynb`.
+- **Done:** Phases 0,1,2,3,4,5,6,7,8. **Remaining:** Phase 9 (Full E2E & Docker).
+- **Next action:** Phase 9 - build the container via `start_mac.sh` (note: `tradewars` holds :8000, run
+  avatar on another port), comprehensive Playwright E2E across ALL features incl. the fetch tool IN
+  Docker (validates the Dockerfile `uv tool install mcp-server-fetch` + PATH), update `test/` plans,
+  delete all test data + screenshots.
 
 ### Commits (one per phase, on `more-build`)
 - `a4a5f68` "Fixed doc" - the OWNER's edits to MORE.md (`?m=` query string, Q54 fix) before work began
@@ -32,7 +33,8 @@ precedes the Instructions / FAQ-editor / Archive admin UI.
 - `1d734fb` Phase 5 - admin FAQ editor (CRUD over the faq table)
 - `6b27325` Docs - Project Status & Handoff Record
 - `4d08dfa` Phase 6 - archive/restore/72h-bulk + Archive admin tab
-- (next commit) Phase 7 - jsonl Download endpoints + buttons (Total already shown by count badges)  **<- HEAD after this commit**
+- `9344bb3` Phase 7 - jsonl Download endpoints + buttons (Total already shown by count badges)
+- (next commit) Phase 8 - web-fetch MCP + code allow-list + graceful degradation  **<- HEAD after this commit**
 
 ### Deployment state  (IMPORTANT)
 - Production = fly.io app `avatar-ed` (region `sjc`), public at `avatar.edwarddonner.com`
@@ -41,12 +43,12 @@ precedes the Instructions / FAQ-editor / Archive admin UI.
 - The owner deployed **once, after Phase 2**, so **production runs Phase 0-2 code** (`c787659`).
   LIVE today: the conversation-pagination fix, FAQ-served-from-Supabase, the 4-tier visitor polling,
   the `?m=` deep link, and the OG image.
-- **Phases 3-7 are committed locally but NOT deployed.** So the live site does NOT yet have:
+- **Phases 3-8 are committed locally but NOT deployed.** So the live site does NOT yet have:
   the **icon-rendering fix** (live icons still render as solid silhouettes - see bug #2 below),
   the admin 4-tab nav, additional-instructions, the FAQ editor, the **Archive** tab / archive+restore
-  / 72h bulk-archive, or the **Download** (jsonl export) buttons. The owner can deploy whenever; the
-  icon fix + all admin features ship together on the next deploy. (Needs the `archive` table, already
-  created in Phase 0's README DDL.)
+  / 72h bulk-archive, the **Download** (jsonl export) buttons, or the **web-fetch tool**. The owner can
+  deploy whenever; everything ships together on the next deploy. (Needs the `archive` table from Phase
+  0's README DDL; the Dockerfile now also preinstalls `mcp-server-fetch`.)
 
 ### Environment & key facts
 - **Single Supabase DB (`vsdbgmlilyduqkybcltg`) IS production** - shared by local dev, the test
@@ -106,9 +108,16 @@ precedes the Instructions / FAQ-editor / Archive admin UI.
    - Phase 7.4: **LOW** Download buttons reused the shared archive/restore status lines (a successful
      download blanked a just-shown "Archived N" message; errors collided) -> dedicated
      `#downloadConvosStatus` / `#downloadArchiveStatus` spans.
+   - Phase 8.4: **SECURITY** fetch tool's owner-only constraint was prompt-only (SSRF via prompt
+     injection from untrusted visitor text) -> **code-level URL allow-list** via a guarded `fetch`
+     function tool that validates the host then delegates to the MCP server (owner-chosen; no MCP
+     subclassing, since SDK lifecycle hooks can't block and tool-input-guardrails don't attach to MCP
+     tools); **MEDIUM** MCP server was a hard per-turn dependency (spawn failure broke every chat) ->
+     graceful degradation; **LOW** MaxTurnsExceeded stored text diverged from streamed text -> store the
+     partial + a note.
 
 ### Testing completed
-- **Backend pytest: 73 passing** (`cd backend && uv run pytest -q`). Tests hit the real Supabase and the
+- **Backend pytest: 94 passing** (`cd backend && uv run pytest -q`). Tests hit the real Supabase and the
   LLM (mini) - allowed/cheap per SPEC. Files added/changed: `test_supabase_connection.py` (new-table
   column checks), `test_instructions.py`, `test_faq_admin.py`, `test_knowledge.py`, `test_agent.py`.
 - **Per-phase Playwright E2E on the real served app** (not just mocks): P1 `?m=`/`?q=`; P2 the actual
@@ -264,10 +273,25 @@ test data/screenshots -> tick the boxes in this file -> commit once for the phas
 
 ## Phase 8 - Web Fetch MCP
 
-- [ ] 8.1 Wire `MCPServerStdio('mcp-server-fetch')` per chat turn into `stream_agent`; merge the
-      reference INSTRUCTIONS into the prompt; reconcile faq -> fetch -> push ordering.
-- [ ] 8.2 Dockerfile: `uv tool install mcp-server-fetch` so no first-request download.
-- [ ] 8.3 UI: friendly label + icon for the fetch tool (visitor + admin). Tests.
+- [x] 8.1 Wire `mcp-server-fetch` per chat turn into `stream_agent` (manual `connect()`/`cleanup()`).
+      `# Web browsing (fetch tool)` prompt section = code constraint + injected `knowledge/fetch.md`
+      (the reference INSTRUCTIONS' source list). `MAX_TURNS=30` (default 10 is too low for a repo
+      browse) with a partial-aware `MaxTurnsExceeded` fallback. Tool order in the prompt: FAQ -> fetch
+      -> push (Rules).
+- [x] 8.2 Dockerfile: `RUN UV_TOOL_BIN_DIR=/usr/local/bin uv tool install mcp-server-fetch` (binary on
+      PATH, no first-request download). README documents the same `uv tool install` for local dev.
+- [x] 8.3 UI: fetch tool shown in both visitor ("Looked it up on the web . fetch") and admin
+      ("fetch . browsed the web") with the globe icon. `test_fetch.py` (prompt section + constraint,
+      agent tools, allow-list, graceful-degradation). 94 backend tests pass. Live E2E: a course
+      question fetches + answers accurately; greeting / "price of Bitcoin" / SSRF-injection do NOT fetch.
+- [x] 8.4 Review fixes (adversarial workflow, 6 confirmed -> 3 distinct): **SECURITY** the owner-only
+      constraint was prompt-only (SSRF via prompt injection) -> **code-level URL allow-list**
+      (`_fetch_allowed` + `FETCH_ALLOWED`), enforced by exposing a guarded `fetch` function tool that
+      validates the URL then delegates to the MCP server via `call_tool` (no MCP subclassing; owner
+      chose this over lifecycle hooks, which can't block); MEDIUM the MCP server was a hard per-turn
+      dependency (a spawn failure broke every chat) -> graceful degradation (run without fetch if it
+      can't start) + a test; LOW MaxTurnsExceeded stored a fallback that diverged from streamed text ->
+      store the partial + a note so live and stored agree.
 
 ## Phase 9 - Full E2E & Docker
 

@@ -42,6 +42,7 @@ const SECTION_KEY = "avatar-admin-section";
 function toolLabel(tool: string, owner: string): { icon: string; text: string } {
   if (tool === "faq_tool") return { icon: "check", text: "faq_tool · looked up the FAQ" };
   if (tool === "push_tool") return { icon: "mail", text: `push_tool · notified ${owner}` };
+  if (tool === "fetch") return { icon: "globe", text: "fetch · browsed the web" };
   if (tool === "instant") return { icon: "check", text: "instant answer" };
   return { icon: "tool", text: tool };
 }
