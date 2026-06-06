@@ -60,7 +60,7 @@ primary_region = "sjc"               # closest Fly region to the Supabase us-wes
 
 [[vm]]
   size = "shared-cpu-2x"
-  memory = "1gb"
+  memory = "2gb"
 ```
 
 Note: the `Dockerfile` and build context (`frontend/`, `backend/`, `knowledge/`) are at the **repo root**, but this config lives in `scripts/`. So `deploy.sh` runs from the repo root and passes both `--config scripts/fly.toml` and `--dockerfile Dockerfile` explicitly. For ad-hoc commands (`status`, `logs`, `secrets`), use `-a avatar-ed`; for `deploy`, use `-c scripts/fly.toml`.
