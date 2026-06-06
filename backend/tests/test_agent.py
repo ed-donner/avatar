@@ -42,6 +42,9 @@ def test_knowledge_file_organization():
     assert "how old is Ed Donner" in style and "how old is Ed Donner" not in rules
     # jobs/courses guidance is owner-specific content -> knowledge.md
     assert "take the courses in the order" in know and "take the courses in the order" not in rules
+    # course-resource links are owner reference content -> knowledge.md, not style
+    assert "ai-coder-vibe-coder-to-agentic-engineer" in know
+    assert "ai-coder-vibe-coder-to-agentic-engineer" not in style
     # rules.md is owner-agnostic: no owner name leaks in
     assert "Ed Donner" not in rules
 

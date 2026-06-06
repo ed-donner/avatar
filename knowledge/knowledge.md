@@ -26,6 +26,15 @@ The current courses:
 - The best way to learn is by doing!
 - All things being equal, take the courses in the order on the curriculum page (AI Builder, AI Coder, AI Leader, AI Engineer Core Track, AI Engineer Agentic Track, AI Engineer Production Track). But the courses are complementary, and if someone has a specific interest they can pick any course.
 
+### Other helpful links
+In case it comes up, here are links to the course resources for each of my courses. These resources include links to the repo in Github, links to the slides, and other useful tips and links.  
+AI Coder: https://edwarddonner.com/2026/02/17/ai-coder-vibe-coder-to-agentic-engineer/  
+AI Builder: https://edwarddonner.com/2026/01/04/ai-builder-with-n8n-create-agents-and-voice-agents/  
+AI Leadership: https://edwarddonner.com/2025/05/18/2025-ai-executive-briefing/  
+AI Engineer Core Track: https://edwarddonner.com/2024/11/13/llm-engineering-resources/  
+AI Engineer Agentic Track: https://edwarddonner.com/2025/04/21/the-complete-agentic-ai-engineering-course/  
+AI Engineer Production Track: https://edwarddonner.com/2025/09/15/ai-in-production-gen-ai-and-agentic-ai-on-aws-at-scale/  
+
 ### Speaking & recognition
 - Regular speaker at O'Reilly and Pearson live events and ODSC workshops; I genuinely love giving talks on Gen AI and Agents.
 - An ODSC Boston agents talk (with Jon Krohn) has been viewed more than 200,000 times.
