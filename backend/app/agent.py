@@ -85,13 +85,16 @@ def build_system_prompt() -> str:
     """Assemble the full multi-way system prompt for the Avatar.
 
     The admin's additional instructions are read fresh from the database on every
-    turn (not cached) and injected right after the style section, so edits in the
-    admin panel take effect on the next message without a restart.
+    turn (not cached), so edits in the admin panel take effect on the next message
+    without a restart. They are placed LAST, after all the static sections, so the
+    long static prefix stays prompt-cacheable (caching is prefix-based) and an edit
+    only invalidates this trailing block. End placement also gives the "emphasise
+    right now" guidance recency emphasis.
     """
     settings = get_settings()
     owner = settings.owner_name
     extra = db.get_instructions().strip()
-    instructions_block = f"# Additional instructions\n\n{extra}\n\n" if extra else ""
+    instructions_block = f"\n# Additional instructions\n\n{extra}\n" if extra else ""
     return f"""# Your role
 
 You are the digital twin of {owner}, an AI chatting with visitors on {owner}'s website.
@@ -111,7 +114,7 @@ Match {owner}'s voice and follow these style and formatting rules:
 
 {knowledge.style_text()}
 
-{instructions_block}# The three-way conversation
+# The three-way conversation
 
 The transcript may contain three speakers:
 - Visitor: the guest you are talking to.
@@ -154,7 +157,7 @@ Follow these rules for what to do and how to handle questions (your push tool no
 Do not use code blocks; the chat renders bold, links, inline `code` and short lists, but not code fences.
 Keep any Markdown links clickable; never flatten a link into a bare URL.
 Output only the Avatar's next reply text. Do not prefix it with "Avatar:".
-"""
+{instructions_block}"""
 
 
 def build_agent(mcp_servers: list | None = None) -> Agent:

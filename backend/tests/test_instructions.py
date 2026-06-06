@@ -36,18 +36,16 @@ def test_instructions_roundtrip(admin_client, preserve_instructions):
     assert got.json()["instructions"] == text
 
 
-def test_instructions_injected_after_style(preserve_instructions):
+def test_instructions_injected_last_for_cache_friendliness(preserve_instructions):
     marker = "ZZZ_PYTEST_INSTRUCTION_MARKER"
     db.set_instructions(marker)
     prompt = agent.build_system_prompt()
     assert marker in prompt
     assert "# Additional instructions" in prompt
-    # Appears after the style section and before the three-way section.
-    assert (
-        prompt.index("# Your style and voice")
-        < prompt.index("# Additional instructions")
-        < prompt.index("# The three-way conversation")
-    )
+    # The (per-turn, editable) instructions block is placed LAST so editing it doesn't
+    # invalidate the long static prompt prefix that precedes it (prefix-based caching).
+    assert prompt.index("# Additional instructions") > prompt.index("# Output format")
+    assert prompt.rstrip().endswith(marker)
 
 
 def test_instructions_empty_omits_section(preserve_instructions):
