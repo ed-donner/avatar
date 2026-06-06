@@ -34,7 +34,8 @@ precedes the Instructions / FAQ-editor / Archive admin UI.
 - `6b27325` Docs - Project Status & Handoff Record
 - `4d08dfa` Phase 6 - archive/restore/72h-bulk + Archive admin tab
 - `9344bb3` Phase 7 - jsonl Download endpoints + buttons (Total already shown by count badges)
-- (next commit) Phase 8 - web-fetch MCP + code allow-list + graceful degradation  **<- HEAD after this commit**
+- `71c5da4` Phase 8 - web-fetch MCP (initial: code allow-list + graceful degradation)
+- (next commit) Phase 8 follow-up - back out the allow-list/wrapper; idiomatic context-manager + prompt-only  **<- HEAD after this commit**
 
 ### Deployment state  (IMPORTANT)
 - Production = fly.io app `avatar-ed` (region `sjc`), public at `avatar.edwarddonner.com`
@@ -108,16 +109,15 @@ precedes the Instructions / FAQ-editor / Archive admin UI.
    - Phase 7.4: **LOW** Download buttons reused the shared archive/restore status lines (a successful
      download blanked a just-shown "Archived N" message; errors collided) -> dedicated
      `#downloadConvosStatus` / `#downloadArchiveStatus` spans.
-   - Phase 8.4: **SECURITY** fetch tool's owner-only constraint was prompt-only (SSRF via prompt
-     injection from untrusted visitor text) -> **code-level URL allow-list** via a guarded `fetch`
-     function tool that validates the host then delegates to the MCP server (owner-chosen; no MCP
-     subclassing, since SDK lifecycle hooks can't block and tool-input-guardrails don't attach to MCP
-     tools); **MEDIUM** MCP server was a hard per-turn dependency (spawn failure broke every chat) ->
-     graceful degradation; **LOW** MaxTurnsExceeded stored text diverged from streamed text -> store the
-     partial + a note.
+   - Phase 8.4: review flagged **SECURITY** the fetch tool's owner-only constraint is prompt-only
+     (SSRF via prompt injection) and **MEDIUM** the MCP server is a hard per-turn dependency. A first
+     pass added a code-level allow-list + graceful degradation, but **the owner chose to back those out**
+     in favour of the simple idiomatic skill approach (MCP attached via the context manager) and trusting
+     the prompt (matches the SPEC's "through prompting" + `reference/fetch.ipynb`). Accepted residual risk.
+     Kept: the **LOW** MaxTurnsExceeded fix (store the partial streamed text + a note so live and stored agree).
 
 ### Testing completed
-- **Backend pytest: 94 passing** (`cd backend && uv run pytest -q`). Tests hit the real Supabase and the
+- **Backend pytest: 77 passing** (`cd backend && uv run pytest -q`). Tests hit the real Supabase and the
   LLM (mini) - allowed/cheap per SPEC. Files added/changed: `test_supabase_connection.py` (new-table
   column checks), `test_instructions.py`, `test_faq_admin.py`, `test_knowledge.py`, `test_agent.py`.
 - **Per-phase Playwright E2E on the real served app** (not just mocks): P1 `?m=`/`?q=`; P2 the actual
@@ -273,25 +273,28 @@ test data/screenshots -> tick the boxes in this file -> commit once for the phas
 
 ## Phase 8 - Web Fetch MCP
 
-- [x] 8.1 Wire `mcp-server-fetch` per chat turn into `stream_agent` (manual `connect()`/`cleanup()`).
-      `# Web browsing (fetch tool)` prompt section = code constraint + injected `knowledge/fetch.md`
-      (the reference INSTRUCTIONS' source list). `MAX_TURNS=30` (default 10 is too low for a repo
-      browse) with a partial-aware `MaxTurnsExceeded` fallback. Tool order in the prompt: FAQ -> fetch
+- [x] 8.1 Wire `mcp-server-fetch` per chat turn into `stream_agent` via the **context manager**
+      (`async with MCPServerStdio(...) as server` -> `build_agent(mcp_servers=[server])`), the idiomatic
+      `openai-mcp` skill pattern. `# Web browsing (fetch tool)` prompt section = constraint + injected
+      `knowledge/fetch.md` (the reference INSTRUCTIONS' source list). `MAX_TURNS=30` (default 10 is too
+      low for a repo browse) with a partial-aware `MaxTurnsExceeded` fallback. Prompt order: FAQ -> fetch
       -> push (Rules).
 - [x] 8.2 Dockerfile: `RUN UV_TOOL_BIN_DIR=/usr/local/bin uv tool install mcp-server-fetch` (binary on
       PATH, no first-request download). README documents the same `uv tool install` for local dev.
 - [x] 8.3 UI: fetch tool shown in both visitor ("Looked it up on the web . fetch") and admin
       ("fetch . browsed the web") with the globe icon. `test_fetch.py` (prompt section + constraint,
-      agent tools, allow-list, graceful-degradation). 94 backend tests pass. Live E2E: a course
-      question fetches + answers accurately; greeting / "price of Bitcoin" / SSRF-injection do NOT fetch.
-- [x] 8.4 Review fixes (adversarial workflow, 6 confirmed -> 3 distinct): **SECURITY** the owner-only
-      constraint was prompt-only (SSRF via prompt injection) -> **code-level URL allow-list**
-      (`_fetch_allowed` + `FETCH_ALLOWED`), enforced by exposing a guarded `fetch` function tool that
-      validates the URL then delegates to the MCP server via `call_tool` (no MCP subclassing; owner
-      chose this over lifecycle hooks, which can't block); MEDIUM the MCP server was a hard per-turn
-      dependency (a spawn failure broke every chat) -> graceful degradation (run without fetch if it
-      can't start) + a test; LOW MaxTurnsExceeded stored a fallback that diverged from streamed text ->
-      store the partial + a note so live and stored agree.
+      agent mcp_servers wiring, params). 77 backend tests pass. Live E2E: a course question fetches +
+      answers accurately; greeting / general web ("weather", "price of Bitcoin") do NOT fetch.
+- [x] 8.4 Adversarial review (6 confirmed -> 3 distinct) and the **owner's decision**: the review
+      flagged that the owner-only constraint is **prompt-only** (a prompt-injection SSRF gap) and that
+      the MCP server is a hard per-turn dependency. The first hardening pass added a code-level URL
+      allow-list (a guarded `fetch` wrapper over `call_tool`) + graceful degradation. **The owner chose
+      to back this out** and keep the simple idiomatic skill approach (MCP server attached to the agent
+      via the context manager) and **trust the prompt** for the source constraint (matching the SPEC's
+      "through prompting" wording and `reference/fetch.ipynb`). Residual, accepted: the constraint is
+      prompt-only, and a missing `mcp-server-fetch` binary would error chats (Docker preinstalls it;
+      README documents the local install). Kept from the review: the partial-aware `MaxTurnsExceeded`
+      storage so the live view and the stored row agree.
 
 ## Phase 9 - Full E2E & Docker
 

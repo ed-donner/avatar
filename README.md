@@ -142,7 +142,7 @@ The twin's knowledge and voice come from a few files in `knowledge/`, read into 
 - **`knowledge.md`** - a rich, first-person profile of you (background, work, courses, skills, personal notes). The main "who I am" source.
 - **`style.md`** - how the twin should sound: voice and personality, formatting rules, and safety/guardrail rules for answering on the public internet.
 - **`faq.jsonl`** - one JSON object per line. Each row has `faq` (number), `question` (the full question), `answer` (the full answer, in markdown), and `query` (a short, precise phrasing used only for routing). The prompt lists the `query` phrasings so the model can match a visitor's question to a number; the FAQ tool and the `Qn` shortcut then return the full original question and answer. Visitors can also type a bare `Qn` (e.g. `Q2`) for an instant answer with no LLM call, and a deep link like `…/?q=2` opens the chat and immediately asks Q2 (handy for sharing a direct answer or embedding).
-- **`fetch.md`** - the source list for the web-fetch tool: the owner's site and course-repo URLs the twin may read on demand (via the `mcp-server-fetch` MCP server). Replace these with your own when standing up your own twin, and update the matching code allow-list in `backend/app/agent.py` (`FETCH_ALLOWED`) so only those hosts are reachable.
+- **`fetch.md`** - the source list for the web-fetch tool: the owner's site and course-repo URLs the twin may read on demand (via the `mcp-server-fetch` MCP server). It is injected into the system prompt, which constrains the tool to those sources (no general web browsing). Replace these with your own when standing up your own twin.
 - **`pic.jpg`** - your photo, used for the human avatar; a robotic variant is used for the twin (see `design-system/docs/avatar-generation.md`).
 
 There is no vector database. (Earlier versions used `summary.txt` and a `linkedin.pdf`; these have been replaced by `knowledge.md` and `style.md`.)
@@ -167,8 +167,6 @@ The web-fetch tool launches the `mcp-server-fetch` MCP server as `mcp-server-fet
 ```
 uv tool install mcp-server-fetch
 ```
-
-If it isn't installed the chat still works - it just degrades to no web-fetch tool (a warning is logged).
 
 Run the backend and frontend in two terminals.
 
