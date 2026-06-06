@@ -10,7 +10,7 @@ specific course pages are:
 - AI Engineer Agentic Track: https://edwarddonner.com/2025/04/21/the-complete-agentic-ai-engineering-course/
 - AI Engineer Production Track: https://edwarddonner.com/2025/09/15/ai-in-production-gen-ai-and-agentic-ai-on-aws-at-scale/
 
-The course code is in three GitHub repos: `llm_engineering`, `agents` and `production` (owner `ed-donner`).
+The course code (and this Avatar app itself) is in these GitHub repos: `llm_engineering`, `agents`, `production` and `avatar` (owner `ed-donner`).
 Because of GitHub's robots.txt, read repo files through raw.githubusercontent.com, for example:
 
 - https://raw.githubusercontent.com/ed-donner/llm_engineering/main/README.md

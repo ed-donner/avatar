@@ -49,6 +49,17 @@ def test_knowledge_file_organization():
     assert "Ed Donner" not in rules
 
 
+def test_security_and_push_guardrails_in_rules():
+    """The hardening guardrails from the conversation audit must stay in the prompt."""
+    rules = knowledge.rules_text().lower()
+    assert "system prompt" in rules  # never reveal internal tools / system prompt
+    assert "knowledge-cutoff date" in rules  # never assert a fabricated cutoff
+    assert "do not invent specifics" in rules  # no embellishment beyond the knowledge base
+    # push-tool discipline: only claim a notification when it actually fired
+    assert "only say you have notified your human" in rules
+    assert "pip install" in rules  # the uv-not-pip steer is present
+
+
 def test_knowledge_files_nest_under_prompt_headings():
     """knowledge/* files must top out at H2 so they nest under agent.py's H1 sections."""
     for text in (knowledge.knowledge_text(), knowledge.style_text(), knowledge.rules_text()):
