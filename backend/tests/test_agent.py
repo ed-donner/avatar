@@ -23,17 +23,27 @@ def test_old_sources_removed():
 
 
 def test_rules_separated_from_style():
-    """Behaviour/safety rules live in rules.md; style.md is voice/formatting only."""
+    """Behaviour/safety rules live in rules.md; the code-coupled output contract stays in agent.py."""
     prompt = agent.build_system_prompt()
-    # rules.md content is injected under its own prompt section
     assert "# Rules and guardrails" in prompt
-    assert "Safety and security" in prompt
-    assert "how old is Ed Donner" in prompt  # the age-question rule moved to rules.md
-    # the safety rules are no longer inside style.md
+    assert "Safety and security" in prompt  # from rules.md
     assert "Safety and security" not in knowledge.style_text()
-    # the code-coupled output contract stays in agent.py, not in an owner file
+    # the code-coupled output contract stays in agent.py, not in an owner-editable file
     assert "not code fences" in prompt
     assert "not code fences" not in knowledge.rules_text()
+
+
+def test_knowledge_file_organization():
+    """rules.md = owner-agnostic general rules; style.md = personal voice; knowledge.md = owner facts."""
+    style, rules, know = knowledge.style_text(), knowledge.rules_text(), knowledge.knowledge_text()
+    # answer length is a general rule any avatar would use -> rules.md
+    assert "this is a chat not a lecture" in rules and "this is a chat not a lecture" not in style
+    # the age-question deflection is personal voice -> style.md
+    assert "how old is Ed Donner" in style and "how old is Ed Donner" not in rules
+    # jobs/courses guidance is owner-specific content -> knowledge.md
+    assert "take the courses in the order" in know and "take the courses in the order" not in rules
+    # rules.md is owner-agnostic: no owner name leaks in
+    assert "Ed Donner" not in rules
 
 
 def test_knowledge_files_nest_under_prompt_headings():
