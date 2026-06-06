@@ -140,10 +140,13 @@ All tests must pass. They check that `SUPABASE_URL` / `SUPABASE_KEY` are present
 The twin's knowledge and voice come from a few files in `knowledge/`, read into the system prompt at runtime. Edit these to make the twin yours:
 
 - **`knowledge.md`** - a rich, first-person profile of you (background, work, courses, skills, personal notes). The main "who I am" source.
-- **`style.md`** - how the twin should sound: voice and personality, formatting rules, and safety/guardrail rules for answering on the public internet.
+- **`style.md`** - how the twin should *sound*: voice and personality, answer length, formatting rules, and useful links.
+- **`rules.md`** - how the twin should *behave*: safety/guardrails for the public internet, when to escalate to you (push tool), and topic-specific guidance (jobs/courses, deflecting personal questions). Kept separate from `style.md` so voice and policy are easy to tune independently.
 - **`faq.jsonl`** - one JSON object per line. Each row has `faq` (number), `question` (the full question), `answer` (the full answer, in markdown), and `query` (a short, precise phrasing used only for routing). The prompt lists the `query` phrasings so the model can match a visitor's question to a number; the FAQ tool and the `Qn` shortcut then return the full original question and answer. Visitors can also type a bare `Qn` (e.g. `Q2`) for an instant answer with no LLM call, and a deep link like `…/?q=2` opens the chat and immediately asks Q2 (handy for sharing a direct answer or embedding).
 - **`fetch.md`** - the source list for the web-fetch tool: the owner's site and course-repo URLs the twin may read on demand (via the `mcp-server-fetch` MCP server). It is injected into the system prompt, which constrains the tool to those sources (no general web browsing). Replace these with your own when standing up your own twin.
 - **`pic.jpg`** - your photo, used for the human avatar; a robotic variant is used for the twin (see `design-system/docs/avatar-generation.md`).
+
+**Heading convention:** each of these Markdown files is injected *under* an `#` (H1) section of the system prompt, so start their own headings at `##` (H2) and go deeper from there. Using `#` inside a knowledge file would flatten the prompt's hierarchy.
 
 There is no vector database. (Earlier versions used `summary.txt` and a `linkedin.pdf`; these have been replaced by `knowledge.md` and `style.md`.)
 

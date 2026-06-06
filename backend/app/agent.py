@@ -9,6 +9,7 @@ from collections.abc import AsyncIterator
 
 from agents import (
     Agent,
+    ModelSettings,
     Runner,
     function_tool,
     set_default_openai_api,
@@ -40,6 +41,12 @@ MAX_TURNS_NOTE = "(I ran out of steps before finishing that lookup - ask me to n
 MAX_TURNS_FALLBACK = (
     "Sorry, I couldn't finish looking that up just now. Could you narrow the question, or try again?"
 )
+
+# Hard ceiling on output tokens per reply, so a jailbreak can't run up token spend even if it
+# defeats the "keep it concise" prompt guidance. Generous enough never to clip a real answer or a
+# relayed FAQ; only a runaway/abuse response reaches it. The instant Qn path bypasses the LLM entirely.
+MAX_OUTPUT_TOKENS = 2000
+LENGTH_NOTE = "(I've kept that brief - ask me to expand on any part.)"
 
 
 def configure_openrouter() -> None:
@@ -100,7 +107,7 @@ drawing on it to answer questions about their career, background, skills, experi
 
 # Your style and voice
 
-Match {owner}'s voice and follow these style and safety rules:
+Match {owner}'s voice and follow these style and formatting rules:
 
 {knowledge.style_text()}
 
@@ -136,15 +143,16 @@ already know first; reach for fetch only when the answer needs detail from those
 
 {knowledge.fetch_text()}
 
-# Rules
+# Rules and guardrails
 
-If you do not know the answer, do not invent one: tell the visitor you do not know and call
-push_tool to record the question for {owner}.
+Follow these rules for what to do and how to handle questions (your push tool notifies {owner}):
 
-Contact capture: if the visitor wants to get in touch, ask for their email, then call push_tool
-with their email and the context, and tell the visitor you have notified {owner}.
+{knowledge.rules_text()}
+
+# Output format
 
 Do not use code blocks; the chat renders bold, links, inline `code` and short lists, but not code fences.
+Keep any Markdown links clickable; never flatten a link into a bare URL.
 Output only the Avatar's next reply text. Do not prefix it with "Avatar:".
 """
 
@@ -156,6 +164,7 @@ def build_agent(mcp_servers: list | None = None) -> Agent:
         name="Avatar",
         instructions=build_system_prompt(),
         model=settings.model,
+        model_settings=ModelSettings(max_tokens=MAX_OUTPUT_TOKENS),
         tools=[faq_tool, push_tool],
         mcp_servers=mcp_servers or [],
     )
@@ -211,4 +220,14 @@ async def stream_agent(transcript: str) -> AsyncIterator[dict]:
                 text = MAX_TURNS_FALLBACK
             yield {"type": "_final", "text": text, "tool_calls": tool_calls}
             return
-        yield {"type": "_final", "text": result.final_output, "tool_calls": tool_calls}
+        # The hard max_tokens cap truncates the reply silently (no exception). Detect it on the
+        # FINAL response only: raw_responses[-1].usage is that turn's own output_tokens (NOT the
+        # run's cumulative total, which would false-positive on a multi-turn browse), and max_tokens
+        # caps that same quantity - so >= the cap means the last reply was clipped. Append a short
+        # note so it ends cleanly instead of mid-sentence (mirrors the MaxTurns touch above).
+        text = result.final_output
+        last = result.raw_responses[-1] if result.raw_responses else None
+        if last and last.usage and last.usage.output_tokens >= MAX_OUTPUT_TOKENS:
+            yield {"type": "token", "text": "\n\n" + LENGTH_NOTE}
+            text = (text or "") + "\n\n" + LENGTH_NOTE
+        yield {"type": "_final", "text": text, "tool_calls": tool_calls}

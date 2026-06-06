@@ -32,6 +32,12 @@ def fetch_text() -> str:
 
 
 @lru_cache
+def rules_text() -> str:
+    """The behaviour and safety rules (rules.md), included in the system prompt."""
+    return (get_settings().knowledge_dir / "rules.md").read_text(encoding="utf-8")
+
+
+@lru_cache
 def _load_faqs() -> tuple[list[dict], dict[int, dict]]:
     """Load FAQs from the Supabase faq table (the source of truth).
 
