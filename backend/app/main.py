@@ -6,14 +6,14 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Cookie, Depends, FastAPI, HTTPException, Request, Response
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.sse import EventSourceResponse
 from fastapi.staticfiles import StaticFiles
 from limits import parse
 from limits.storage import MemoryStorage
 from limits.strategies import MovingWindowRateLimiter
 
-from app import agent, db, knowledge
+from app import agent, db, knowledge, push
 from app.auth import (
     clear_session_cookie,
     is_authenticated,
@@ -47,6 +47,14 @@ app = FastAPI(title="Avatar", lifespan=lifespan)
 
 api = APIRouter(prefix="/api")
 admin = APIRouter(prefix="/admin")
+
+
+@app.exception_handler(Exception)
+async def _on_unhandled_error(request: Request, exc: Exception) -> JSONResponse:
+    """Alert the owner about any otherwise-unhandled backend error, and return a generic 500
+    (without leaking the exception detail to the caller)."""
+    push.notify_error(f"Unhandled error on {request.method} {request.url.path}: {exc!r}", category="server")
+    return JSONResponse(status_code=500, content={"detail": "Internal server error"})
 
 
 # ---- Abuse guards (cheap protection for the API key) ----
@@ -161,6 +169,7 @@ async def chat(request: ChatRequest) -> AsyncIterator[dict]:
         async for event in _chat_events(request):
             yield event
     except Exception as exc:  # noqa: BLE001 - surface failures to the client
+        push.notify_error(f"Chat turn failed: {exc}", category="chat")
         yield {"type": "error", "message": str(exc)}
 
 
@@ -176,6 +185,7 @@ def login(credentials: LoginRequest, request: Request, response: Response) -> di
     """
     ip = _client_ip(request)
     if not _rate_limiter.test(_login_rate, "login", ip):
+        push.notify_error(f"Admin login throttled after repeated failed attempts from {ip}.", category="login")
         raise HTTPException(status_code=429, detail="Too many login attempts; please wait a minute.")
     if not verify_password(credentials.password):
         _rate_limiter.hit(_login_rate, "login", ip)  # only failures count toward the limit

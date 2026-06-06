@@ -17,10 +17,12 @@ from app.main import app  # noqa: E402
 
 @pytest.fixture(autouse=True)
 def _reset_rate_limits():
-    """Clear the in-memory rate-limit state before each test so cases don't leak into each other."""
+    """Clear in-memory rate-limit + error-debounce state before each test (no cross-test leakage)."""
     from app.main import _rate_storage
+    from app.push import _error_storage
 
     _rate_storage.reset()
+    _error_storage.reset()
     yield
 
 

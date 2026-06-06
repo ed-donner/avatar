@@ -43,12 +43,15 @@ def test_logout_revokes_access(client):
     assert client.get(GUARDED).status_code == 401
 
 
-def test_failed_logins_throttled_per_ip(client):
+def test_failed_logins_throttled_per_ip(client, monkeypatch):
     """After 5 failed attempts from an IP, further attempts are 429'd (brute-force speed bump)."""
+    alerts = []
+    monkeypatch.setattr("app.push.notify_error", lambda *a, **k: alerts.append((a, k)))  # no real push in tests
     headers = {"Fly-Client-IP": "203.0.113.7"}  # a dedicated IP isolates this test's bucket
     for _ in range(5):
         assert client.post("/admin/login", json={"password": "wrong"}, headers=headers).status_code == 401
     assert client.post("/admin/login", json={"password": "wrong"}, headers=headers).status_code == 429
+    assert alerts  # the throttle trip alerts the owner (gamelan)
 
 
 def test_successful_login_not_throttled(client):
