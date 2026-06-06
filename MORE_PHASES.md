@@ -17,11 +17,11 @@ precedes the Instructions / FAQ-editor / Archive admin UI.
 
 ### Snapshot
 - **Branch:** `more-build` (NOT `more`; base branch is `main`). Working tree clean.
-- **Done:** Phases 0,1,2,3,4,5,6,7,8. **Remaining:** Phase 9 (Full E2E & Docker).
-- **Next action:** Phase 9 - build the container via `start_mac.sh` (note: `tradewars` holds :8000, run
-  avatar on another port), comprehensive Playwright E2E across ALL features incl. the fetch tool IN
-  Docker (validates the Dockerfile `uv tool install mcp-server-fetch` + PATH), update `test/` plans,
-  delete all test data + screenshots.
+- **Done:** Phases 0-9 — ALL COMPLETE. The MORE.md enhancements are built, tested (incl. full Docker
+  E2E), and committed on `more-build`.
+- **Next action:** none required for the build. The owner can review/merge `more-build` and deploy when
+  ready (deploy ships Phases 3-8 features incl. the icon fix; see "Deployment state"). Optional: clear
+  the owner-entered `instructions` test value before deploying if unwanted.
 
 ### Commits (one per phase, on `more-build`)
 - `a4a5f68` "Fixed doc" - the OWNER's edits to MORE.md (`?m=` query string, Q54 fix) before work began
@@ -35,7 +35,8 @@ precedes the Instructions / FAQ-editor / Archive admin UI.
 - `4d08dfa` Phase 6 - archive/restore/72h-bulk + Archive admin tab
 - `9344bb3` Phase 7 - jsonl Download endpoints + buttons (Total already shown by count badges)
 - `71c5da4` Phase 8 - web-fetch MCP (initial: code allow-list + graceful degradation)
-- (next commit) Phase 8 follow-up - back out the allow-list/wrapper; idiomatic context-manager + prompt-only  **<- HEAD after this commit**
+- `4ba03b8` Phase 8 follow-up - back out the allow-list/wrapper; idiomatic context-manager + prompt-only
+- (next commit) Phase 9 - full Docker E2E + test plans (no app code change)  **<- HEAD after this commit**
 
 ### Deployment state  (IMPORTANT)
 - Production = fly.io app `avatar-ed` (region `sjc`), public at `avatar.edwarddonner.com`
@@ -298,7 +299,17 @@ test data/screenshots -> tick the boxes in this file -> commit once for the phas
 
 ## Phase 9 - Full E2E & Docker
 
-- [ ] 9.1 Build container via `start_mac.sh`; comprehensive Playwright E2E across all features
-      with screenshots; multi-party (visitor/avatar/human) + multiple `conversation_id`s.
-- [ ] 9.2 Update the `test/` plans with new checkboxes.
-- [ ] 9.3 Delete all test data + screenshots.
+- [x] 9.1 Built the image (`docker build -t avatar .`, incl. `uv tool install mcp-server-fetch`) and ran
+      the container (`-p 8001:8000` since `tradewars` holds :8000; `--env-file .env`). Smoke: `/`,
+      `/admin`, `/api/config` all 200; clean startup. **Web fetch validated IN Docker** -
+      `mcp-server-fetch` on PATH (`/usr/local/bin`), and a course question through the containerised SSE
+      API fired a `fetch` event + accurate README answer.
+- [x] 9.2 Comprehensive Playwright E2E against the container (screenshots captured then deleted): visitor
+      intro, `?q=2` deep link, streamed chat using `faq_tool` AND `fetch`, dark + light, mobile; admin
+      dashboard, **3-way human reply -> visitor human bubble** ("Ed Donner . live"), archive->restore,
+      Instructions, FAQ (61), Download, mobile; multiple independent `conversation_id`s.
+- [x] 9.3 Test plans updated: new `test/more-features-test-plan.md` (Phases 1-9 with results) + pointer
+      from `test/e2e-test-plan.md`. All test conversations I created deleted from `messages` + `archive`
+      (verified 0); a **real in-flight visitor conversation was identified and left intact**; screenshots
+      deleted. **Flagged to owner:** the `instructions` singleton holds an owner-entered test value
+      ("...favorite fruit is a banana") - harmless until deployed; clear it in the Instructions tab if unwanted.

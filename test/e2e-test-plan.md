@@ -1,5 +1,9 @@
 # End-to-End Test Plan
 
+> This plan covers the original base app. The [MORE.md](../MORE.md) enhancements (archive, download,
+> instructions, FAQ editor, web-fetch, deep links, polling) and their full Docker E2E are documented
+> in [more-features-test-plan.md](more-features-test-plan.md).
+
 ## Test Results
 
 Method: built and ran the real Docker container. `docker build -t avatar .` succeeded (multi-stage:
