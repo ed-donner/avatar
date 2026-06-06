@@ -27,6 +27,8 @@ COOKIE_SECURE=0
 
 `OWNER_NAME` is the name of the person this Digital Twin represents (you). It is shown in the UI - the site header/subtitle, the page title, how the Avatar refers to itself, and on your own messages when you join a conversation from admin (e.g. "Ed Donner - live"). Set it to how you want your name to appear. It is configuration, never hardcoded, so each owner sets their own.
 
+`ADMIN_PASSWORD` is **required**: the app refuses to start without it, so a fork can't accidentally ship an admin panel with an empty password (which would also leave the session cookie signed by a guessable default). Choose a strong value. Failed admin logins are rate-limited per IP to blunt brute-force attempts.
+
 `SESSION_SECRET` signs the admin session cookie. It is optional locally - if unset, it is derived from `ADMIN_PASSWORD` - but set it to a long random value (e.g. run `openssl rand -hex 32`) so that changing your admin password later does not invalidate live admin sessions. `COOKIE_SECURE` gates whether that cookie requires HTTPS: leave it `0` (or unset) for local http; it is set to `1` automatically in production (see [Deploy to fly.io](#deploy-to-flyio)).
 
 ### OpenRouter

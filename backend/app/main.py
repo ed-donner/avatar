@@ -58,8 +58,21 @@ TRUNCATION_NOTE = (
 
 # At most 20 messages/minute per conversation_id. In-memory (per process) is enough:
 # OpenRouter caps overall spend, and a browser's requests stick to one machine.
-_rate_limiter = MovingWindowRateLimiter(MemoryStorage())
+_rate_storage = MemoryStorage()  # exposed so tests can reset between cases
+_rate_limiter = MovingWindowRateLimiter(_rate_storage)
 _chat_rate = parse("20/minute")
+# Failed admin logins, per client IP. A speed bump against naive brute force (a strong
+# ADMIN_PASSWORD is the real control); per-IP so an attacker only locks their own IP.
+_login_rate = parse("5/minute")
+
+
+def _client_ip(request: Request) -> str:
+    """Best-effort client IP. Fly sets Fly-Client-IP; fall back to XFF, then the socket peer."""
+    return (
+        request.headers.get("fly-client-ip")
+        or request.headers.get("x-forwarded-for", "").split(",")[0].strip()
+        or (request.client.host if request.client else "unknown")
+    )
 
 
 def clamp_message(text: str) -> str:
@@ -155,9 +168,17 @@ async def chat(request: ChatRequest) -> AsyncIterator[dict]:
 
 
 @admin.post("/login")
-def login(request: LoginRequest, response: Response) -> dict:
-    """Validate the admin password and set a session cookie."""
-    if not verify_password(request.password):
+def login(credentials: LoginRequest, request: Request, response: Response) -> dict:
+    """Validate the admin password and set a session cookie.
+
+    Failed attempts are rate-limited per client IP to blunt online brute force;
+    a successful login is never throttled.
+    """
+    ip = _client_ip(request)
+    if not _rate_limiter.test(_login_rate, "login", ip):
+        raise HTTPException(status_code=429, detail="Too many login attempts; please wait a minute.")
+    if not verify_password(credentials.password):
+        _rate_limiter.hit(_login_rate, "login", ip)  # only failures count toward the limit
         raise HTTPException(status_code=401, detail="Invalid password")
     set_session_cookie(response)
     return {"ok": True}

@@ -48,6 +48,11 @@ MAX_TURNS_FALLBACK = (
 MAX_OUTPUT_TOKENS = 2000
 LENGTH_NOTE = "(I've kept that brief - ask me to expand on any part.)"
 
+# Cap how much conversation history is sent to the LLM each turn (the full history is still
+# stored). Bounds per-turn input cost and prevents a long thread from overflowing the context
+# window. ~40k chars is far more than any real course chat; the per-message clamp is 20k.
+MAX_TRANSCRIPT_CHARS = 40_000
+
 
 def configure_openrouter() -> None:
     """Point the Agents SDK at OpenRouter using the chat-completions API."""
@@ -173,10 +178,24 @@ def build_agent(mcp_servers: list | None = None) -> Agent:
     )
 
 
+def _recent_within_budget(rows: list[Message]) -> list[Message]:
+    """Keep only the most recent messages whose content fits a character budget, so a long
+    conversation can't grow the per-turn LLM input without bound (or overflow the context
+    window). Always keeps at least the latest message. The full history is still stored."""
+    kept: list[Message] = []
+    total = 0
+    for row in reversed(rows):
+        total += len(row.content or "")
+        if total > MAX_TRANSCRIPT_CHARS and kept:
+            break
+        kept.append(row)
+    return list(reversed(kept))
+
+
 def render_transcript(rows: list[Message], owner_name: str) -> str:
-    """Render prior messages as labelled lines, ending with a reply instruction."""
+    """Render recent messages as labelled lines, ending with a reply instruction."""
     lines = []
-    for row in rows:
+    for row in _recent_within_budget(rows):
         if row.role == "visitor":
             lines.append(f"Visitor: {row.content}")
         elif row.role == "avatar":

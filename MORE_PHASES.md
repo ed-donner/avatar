@@ -17,11 +17,14 @@ precedes the Instructions / FAQ-editor / Archive admin UI.
 
 ### Snapshot
 - **Branch:** `more-build` (NOT `more`; base branch is `main`). Working tree clean.
-- **Done:** Phases 0-9 — ALL COMPLETE. The MORE.md enhancements are built, tested (incl. full Docker
-  E2E), and committed on `more-build`.
-- **Next action:** none required for the build. The owner can review/merge `more-build` and deploy when
-  ready (deploy ships Phases 3-8 features incl. the icon fix; see "Deployment state"). Optional: clear
-  the owner-entered `instructions` test value before deploying if unwanted.
+- **Done:** Phases 0-9 (all MORE.md enhancements), plus two post-build batches: **prompt refinements**
+  (rules.md split, heading convention, hard `max_tokens=2000` cap, cache-friendly instruction ordering)
+  and **security hardening** (fail-closed admin password, login throttle, transcript bound, Pushover
+  timeout). All on `more-build`. See the "Post-build refinements" + "Security hardening" sections in
+  [MORE.md](MORE.md).
+- **Next action:** none required. The owner can review/merge `more-build` and deploy when ready.
+  Optional: clear the owner-entered `instructions` test value before deploying if unwanted; set an
+  explicit `SESSION_SECRET` for production (best practice).
 
 ### Commits (one per phase, on `more-build`)
 - `a4a5f68` "Fixed doc" - the OWNER's edits to MORE.md (`?m=` query string, Q54 fix) before work began
@@ -36,7 +39,12 @@ precedes the Instructions / FAQ-editor / Archive admin UI.
 - `9344bb3` Phase 7 - jsonl Download endpoints + buttons (Total already shown by count badges)
 - `71c5da4` Phase 8 - web-fetch MCP (initial: code allow-list + graceful degradation)
 - `4ba03b8` Phase 8 follow-up - back out the allow-list/wrapper; idiomatic context-manager + prompt-only
-- (next commit) Phase 9 - full Docker E2E + test plans (no app code change)  **<- HEAD after this commit**
+- `a2ff2c9` Phase 9 - full Docker E2E + test plans (no app code change)
+- `43698dd` Prompt refinement - split rules from style, fix heading hierarchy, add hard output cap
+- `959d0d2` Prompt refinement - make rules.md owner-agnostic (age->style, jobs/courses->knowledge)
+- `134b80b` Prompt refinement - move "Other helpful links" to knowledge.md
+- `51c1314` Prompt refinement - move additional-instructions block last (prompt-cache friendliness)
+- (next commits) Security hardening (docs + the 4 fixes)  **<- HEAD after these**
 
 ### Deployment state  (IMPORTANT)
 - Production = fly.io app `avatar-ed` (region `sjc`), public at `avatar.edwarddonner.com`

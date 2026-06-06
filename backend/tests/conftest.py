@@ -15,6 +15,15 @@ from app import db  # noqa: E402
 from app.main import app  # noqa: E402
 
 
+@pytest.fixture(autouse=True)
+def _reset_rate_limits():
+    """Clear the in-memory rate-limit state before each test so cases don't leak into each other."""
+    from app.main import _rate_storage
+
+    _rate_storage.reset()
+    yield
+
+
 @pytest.fixture
 def client():
     """A FastAPI TestClient."""

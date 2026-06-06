@@ -59,6 +59,25 @@ def test_agent_has_output_token_cap():
     assert agent.build_agent().model_settings.max_tokens == agent.MAX_OUTPUT_TOKENS == 2000
 
 
+def _msg(i: int, content: str):
+    from app.models import Message
+
+    return Message(id=i, conversation_id="c", role="visitor", content=content, created_at="t")
+
+
+def test_transcript_trimmed_to_recent_within_budget():
+    big = "x" * 30_000
+    out = agent.render_transcript([_msg(1, big), _msg(2, big), _msg(3, "latest short")], "Ed")
+    assert "latest short" in out  # most recent always kept
+    assert out.count("x" * 30_000) == 1  # only the most recent big message fits the 40k budget
+
+
+def test_transcript_keeps_latest_even_if_over_budget():
+    huge = "y" * (agent.MAX_TRANSCRIPT_CHARS + 10_000)
+    out = agent.render_transcript([_msg(1, huge)], "Ed")
+    assert huge in out  # never drop the only/most-recent message
+
+
 # ---- Graceful handling of the hard output cap (no LLM call; Runner stubbed) ----
 
 

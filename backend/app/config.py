@@ -45,6 +45,11 @@ class Settings:
 def get_settings() -> Settings:
     """Return cached settings read from the environment."""
     admin_password = _env("ADMIN_PASSWORD")
+    if not admin_password:
+        raise RuntimeError(
+            "ADMIN_PASSWORD must be set. Without it the admin panel would accept an empty "
+            "password and sign session cookies with a guessable default (fail-open)."
+        )
     return Settings(
         openrouter_api_key=_env("OPENROUTER_API_KEY"),
         model=_env("MODEL", "openai/gpt-5.4-nano"),

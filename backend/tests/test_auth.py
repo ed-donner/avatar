@@ -41,3 +41,20 @@ def test_logout_revokes_access(client):
     assert client.get(GUARDED).status_code == 200
     client.post("/admin/logout")
     assert client.get(GUARDED).status_code == 401
+
+
+def test_failed_logins_throttled_per_ip(client):
+    """After 5 failed attempts from an IP, further attempts are 429'd (brute-force speed bump)."""
+    headers = {"Fly-Client-IP": "203.0.113.7"}  # a dedicated IP isolates this test's bucket
+    for _ in range(5):
+        assert client.post("/admin/login", json={"password": "wrong"}, headers=headers).status_code == 401
+    assert client.post("/admin/login", json={"password": "wrong"}, headers=headers).status_code == 429
+
+
+def test_successful_login_not_throttled(client):
+    """Only failures count, so a correct password is never blocked (and one IP can't lock another)."""
+    password = os.environ["ADMIN_PASSWORD"]
+    other = {"Fly-Client-IP": "203.0.113.8"}
+    for _ in range(5):  # exhaust a DIFFERENT IP's failed-attempt budget
+        client.post("/admin/login", json={"password": "wrong"}, headers={"Fly-Client-IP": "203.0.113.9"})
+    assert client.post("/admin/login", json={"password": password}, headers=other).status_code == 200
