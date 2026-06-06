@@ -11,6 +11,7 @@ PUSHOVER_URL = "https://api.pushover.net/1/messages.json"
 TIMEOUT_SECONDS = 5
 DEFAULT_SOUND = "bugle"  # human-in-the-loop notifications
 ERROR_SOUND = "gamelan"  # backend-error alerts
+HIGH_PRIORITY = 1  # Pushover high priority: bypasses the owner's quiet hours
 
 # Backend-error alerts are debounced so a burst of the same error (e.g. every chat turn
 # failing once the OpenRouter daily cap is hit, or a brute-force login flood) can't spam
@@ -20,7 +21,7 @@ _error_limiter = MovingWindowRateLimiter(_error_storage)
 _error_rate = parse("3/hour")
 
 
-def _send(message: str, sound: str, title: str | None = None) -> str:
+def _send(message: str, sound: str, title: str | None = None, priority: int = HIGH_PRIORITY) -> str:
     """POST one message to Pushover with a timeout, failing softly on any network error."""
     settings = get_settings()
     payload = {
@@ -28,6 +29,7 @@ def _send(message: str, sound: str, title: str | None = None) -> str:
         "token": settings.pushover_token,
         "message": message,
         "sound": sound,
+        "priority": priority,
     }
     if title:
         payload["title"] = title
@@ -43,12 +45,13 @@ def push(message: str, sound: str = DEFAULT_SOUND) -> str:
     return _send(message, sound)
 
 
-def notify_error(summary: str, category: str = "error") -> None:
-    """Alert the owner about a backend error (sound: gamelan), debounced per category.
+def notify_error(summary: str, category: str = "error", debounce: bool = True) -> None:
+    """Alert the owner about a backend error (sound: gamelan), high priority.
 
-    A slow/unreachable Pushover or a flood of errors must never hang or spam, so this
-    fails softly and sends at most a few alerts per category per hour.
+    Debounced per category by default so a flood of errors can't spam notifications or
+    drain the Pushover quota. Pass debounce=False to alert on every occurrence (e.g.
+    failed admin logins). Fails softly via _send.
     """
-    if not _error_limiter.hit(_error_rate, "error", category):
+    if debounce and not _error_limiter.hit(_error_rate, "error", category):
         return  # already alerted for this category recently
     _send(summary, ERROR_SOUND, title="Avatar backend alert")

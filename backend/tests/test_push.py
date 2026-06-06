@@ -45,17 +45,26 @@ def _capture_posts(monkeypatch):
     return posts
 
 
-def test_push_uses_bugle_by_default(monkeypatch):
+def test_push_uses_bugle_and_high_priority(monkeypatch):
     posts = _capture_posts(monkeypatch)
     push_mod.push("hello")
     assert posts[0]["sound"] == "bugle"
+    assert posts[0]["priority"] == 1
 
 
-def test_notify_error_uses_gamelan(monkeypatch):
+def test_notify_error_uses_gamelan_and_high_priority(monkeypatch):
     posts = _capture_posts(monkeypatch)
     push_mod.notify_error("something broke", category="chat")
     assert posts[0]["sound"] == "gamelan"
+    assert posts[0]["priority"] == 1
     assert "something broke" in posts[0]["message"]
+
+
+def test_notify_error_no_debounce_alerts_every_time(monkeypatch):
+    posts = _capture_posts(monkeypatch)
+    for i in range(6):  # debounce=False is how failed logins alert on every attempt
+        push_mod.notify_error(f"login {i}", category="login", debounce=False)
+    assert len(posts) == 6
 
 
 def test_notify_error_is_debounced(monkeypatch):

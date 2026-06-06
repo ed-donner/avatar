@@ -16,13 +16,19 @@ from app.main import app  # noqa: E402
 
 
 @pytest.fixture(autouse=True)
-def _reset_rate_limits():
-    """Clear in-memory rate-limit + error-debounce state before each test (no cross-test leakage)."""
+def _reset_rate_limits(monkeypatch):
+    """Reset rate-limit + error-debounce state, and stub Pushover HTTP so tests never send a
+    real push (every failed login now alerts). Tests that inspect the payload re-stub post."""
+    from app import push as push_mod
     from app.main import _rate_storage
-    from app.push import _error_storage
 
     _rate_storage.reset()
-    _error_storage.reset()
+    push_mod._error_storage.reset()
+
+    class _OK:
+        status_code = 200
+
+    monkeypatch.setattr(push_mod.requests, "post", lambda *args, **kwargs: _OK())
     yield
 
 

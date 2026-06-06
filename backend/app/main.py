@@ -184,11 +184,11 @@ def login(credentials: LoginRequest, request: Request, response: Response) -> di
     a successful login is never throttled.
     """
     ip = _client_ip(request)
-    if not _rate_limiter.test(_login_rate, "login", ip):
-        push.notify_error(f"Admin login throttled after repeated failed attempts from {ip}.", category="login")
+    if not _rate_limiter.test(_login_rate, "login", ip):  # already alerted on the failures
         raise HTTPException(status_code=429, detail="Too many login attempts; please wait a minute.")
     if not verify_password(credentials.password):
         _rate_limiter.hit(_login_rate, "login", ip)  # only failures count toward the limit
+        push.notify_error(f"Failed admin login from {ip}.", category="login", debounce=False)
         raise HTTPException(status_code=401, detail="Invalid password")
     set_session_cookie(response)
     return {"ok": True}

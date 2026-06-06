@@ -163,11 +163,14 @@ who fork and deploy their own copy:
   per-turn cost without bound or overflow the model's context window. The full history is still stored.
 - **Pushover timeout + graceful failure.** The notification call now has a timeout and fails softly,
   so a slow or unreachable Pushover can't hang a chat turn.
-- **Notification sounds + backend-error alerts.** Human-in-the-loop pushes use the `bugle` sound;
-  backend errors send a separate `gamelan` alert with details - an OpenRouter rate-limit/daily-cap
-  failure during a chat, a throttled-login (brute-force) attempt, or any otherwise-unhandled server
-  error. These error alerts are debounced per category (a few per hour) so a flood of errors can't
-  itself spam notifications or drain the Pushover quota.
+- **Notification sounds, priority, and backend-error alerts.** All pushes are high priority
+  (`priority: 1`, bypassing quiet hours). Human-in-the-loop pushes use the `bugle` sound; backend
+  errors send a `gamelan` alert with details - an OpenRouter rate-limit/daily-cap failure during a
+  chat, every failed admin login (with the client IP), or any otherwise-unhandled server error. Error
+  alerts are debounced per category (a few per hour) so a flood can't spam notifications or drain the
+  Pushover quota - **except failed-login alerts, which currently fire on every attempt** (per-IP they
+  are bounded by the login throttle to 5/min; deliberately un-debounced for now so the owner sees each
+  one - a determined attacker rotating IPs could push past that, so this may get a cap later).
 
 Deliberately left as-is (low real risk here): visitor access by unguessable UUID `conversation_id`
 (non-sensitive content); the conversation-id-keyed chat limiter (the spend cap is the real ceiling);
