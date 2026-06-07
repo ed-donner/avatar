@@ -135,3 +135,44 @@ Clarifications agreed before starting work (decisions for the items above):
 12. **Polling** - the new 4-tier ladder (10s / 30s after 2min / 2min after 10min / 5min after 1hr) fully replaces the old 10s/60s scheme; "idle" resets on received human messages as well as on sends.
 
 13. **Safety on the production database.** Before any archive/delete work, all existing conversations are backed up to a local jsonl. All testing uses throwaway `conversation_id`s that are cleaned up afterwards; the 72h bulk-archive is exercised only against self-created rows. Never deploy - local Docker only.
+
+## Post-build refinements
+
+After the phased build (Phases 0-9), two refinements were made to the system prompt:
+
+- **`rules.md` split + heading convention.** The owner knowledge in `knowledge/` is now three files, each with one job: `knowledge.md` (facts about the owner, incl. the jobs/courses guidance and course-resource links), `style.md` (the owner's unique voice and formatting), and `rules.md` (owner-agnostic operating rules: safety, escalation, answer length). Every knowledge file starts its headings at `##` so they nest under the prompt's `#` sections, keeping the assembled prompt's hierarchy consistent.
+- **Hard output cap + cache-friendly ordering.** `build_agent` sets `ModelSettings(max_tokens=2000)` as a hard per-reply ceiling (with a graceful "kept it brief" note appended on the rare truncation, detected via the last response's own token usage). The admin's additional-instructions block is placed LAST in the system prompt: prompt caching is prefix-based, so the editable, per-turn block sits after the long static prefix it would otherwise invalidate (and gains recency emphasis).
+
+## Security hardening (extras)
+
+Prompted by a responsible-disclosure review of the production branch. Stance: this is a public,
+educational Agentic-RAG project with no confidential data; conversations are non-sensitive course
+chat, and the OpenRouter spend cap is the real cost ceiling. Most flagged items are low-risk by
+design. These few are a pragmatically worthwhile, cheap hardening pass - and several protect students
+who fork and deploy their own copy:
+
+- **Fail closed on a missing admin password.** With `ADMIN_PASSWORD` unset, an empty password used to
+  log in AND the session-signing secret degraded to a public constant (`avatar::`), allowing admin
+  cookie forgery. The app now refuses to start without `ADMIN_PASSWORD`. (The live site already sets
+  it; this protects forks.)
+- **Throttle admin login.** Failed `/admin/login` attempts are rate-limited per client IP (5/min) to
+  blunt online brute force. Successful logins are never throttled, and per-IP keying means an attacker
+  only locks their own IP, not the owner.
+- **Bound the transcript.** Each turn sent the entire conversation history to the LLM uncapped; it is
+  now trimmed to the most recent messages within a character budget, so a long thread can't grow
+  per-turn cost without bound or overflow the model's context window. The full history is still stored.
+- **Pushover timeout + graceful failure.** The notification call now has a timeout and fails softly,
+  so a slow or unreachable Pushover can't hang a chat turn.
+- **Notification sounds, priority, and backend-error alerts.** All pushes are high priority
+  (`priority: 1`, bypassing quiet hours). Human-in-the-loop pushes use the `bugle` sound; backend
+  errors send a `gamelan` alert with details - an OpenRouter rate-limit/daily-cap failure during a
+  chat, every failed admin login (with the client IP), or any otherwise-unhandled server error. Error
+  alerts are debounced per category (a few per hour) so a flood can't spam notifications or drain the
+  Pushover quota - **except failed-login alerts, which currently fire on every attempt** (per-IP they
+  are bounded by the login throttle to 5/min; deliberately un-debounced for now so the owner sees each
+  one - a determined attacker rotating IPs could push past that, so this may get a cap later).
+
+Deliberately left as-is (low real risk here): visitor access by unguessable UUID `conversation_id`
+(non-sensitive content); the conversation-id-keyed chat limiter (the spend cap is the real ceiling);
+Pushover quota (OpenRouter caps spend first). Noted as future best practices: a real auth provider
+(Supabase/Clerk) with MFA on admin, and multi-instance + a periodic DR test.
