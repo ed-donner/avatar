@@ -31,6 +31,8 @@ COOKIE_SECURE=0
 
 `SESSION_SECRET` signs the admin session cookie. It is optional locally - if unset, it is derived from `ADMIN_PASSWORD` - but set it to a long random value (e.g. run `openssl rand -hex 32`) so that changing your admin password later does not invalidate live admin sessions. `COOKIE_SECURE` gates whether that cookie requires HTTPS: leave it `0` (or unset) for local http; it is set to `1` automatically in production (see [Deploy to fly.io](#deploy-to-flyio)).
 
+`CURRICULUM_URL` is optional. Set it to your curriculum page (e.g. `CURRICULUM_URL=https://edwarddonner.com/curriculum/`) and the Avatar can give each course's Udemy link with your current coupon, read from that page every 15 minutes. It expects that page's format (a `window.EDC_CONFIG` block of coupons and a `BASE` map of course URLs); leave it unset otherwise.
+
 ### OpenRouter
 
 The Avatar's LLM calls go through [OpenRouter](https://openrouter.ai). If you already have a key in `.env`, skip this.
@@ -42,7 +44,7 @@ The Avatar's LLM calls go through [OpenRouter](https://openrouter.ai). If you al
    ```
    OPENROUTER_API_KEY=sk-or-v1-...
    ```
-5. Add some credit under **Settings > Credits** if your account has none. The Avatar uses the model in `MODEL`. `openai/gpt-5.4-nano` is very cheap and good for development and testing; for a live site, consider a stronger model such as `openai/gpt-5.4-mini` (just set `MODEL` accordingly).
+5. Add some credit under **Settings > Credits** if your account has none. The Avatar uses the model in `MODEL`. `openai/gpt-5.4-nano` is very cheap and good for development and testing; the reference live site runs `openai/gpt-6-luna` (just set `MODEL` accordingly).
 
 ### Supabase
 
@@ -144,8 +146,8 @@ The twin's knowledge and voice come from a few files in `knowledge/`, read into 
 - **`knowledge.md`** - a rich, first-person profile of you (background, work, courses, skills, personal notes). The main "who I am" source.
 - **`style.md`** - how the twin should *sound*: voice and personality, answer length, formatting rules, and useful links.
 - **`rules.md`** - how the twin should *behave*: safety/guardrails for the public internet, when to escalate to you (push tool), and topic-specific guidance (jobs/courses, deflecting personal questions). Kept separate from `style.md` so voice and policy are easy to tune independently.
-- **`faq.jsonl`** - one JSON object per line. Each row has `faq` (number), `question` (the full question), `answer` (the full answer, in markdown), and `query` (a short, precise phrasing used only for routing). The prompt lists the `query` phrasings so the model can match a visitor's question to a number; the FAQ tool and the `Qn` shortcut then return the full original question and answer. Visitors can also type a bare `Qn` (e.g. `Q2`) for an instant answer with no LLM call, and a deep link like `…/?q=2` opens the chat and immediately asks Q2 (handy for sharing a direct answer or embedding).
-- **`fetch.md`** - the source list for the web-fetch tool: the owner's site and course-repo URLs the twin may read on demand (via the `mcp-server-fetch` MCP server). It is injected into the system prompt, which constrains the tool to those sources (no general web browsing). Replace these with your own when standing up your own twin.
+- **`faq.jsonl`** - one JSON object per line. Each row has `faq` (number), `question` (the full question), `answer` (the full answer, in markdown), and `query` (a short, precise phrasing used only for routing). The prompt lists the `query` phrasings so the model can match a visitor's question to a number; the FAQ tool and the `Qn` shortcut then return the full original question and answer. Visitors can also type a bare `Qn` (e.g. `Q2`) for an instant answer with no LLM call, or the literal `Qn` for the list of all FAQ questions, and a deep link like `…/?q=2` opens the chat and immediately asks Q2 (handy for sharing a direct answer or embedding).
+- **`fetch.md`** - the source list for the web-fetch tool: the owner's site and course-repo URLs the twin may read on demand (via the `mcp-server-fetch` MCP server). It is injected into the system prompt, which constrains the tool to those sources (no general web browsing). Its "## Allowed sites" list is also enforced in code: the tool refuses any other address, and with no such list it fetches nothing. Replace these with your own when standing up your own twin.
 - **`pic.jpg`** - your photo, used for the human avatar; a robotic variant is used for the twin (see `design-system/docs/avatar-generation.md`).
 
 **Heading convention:** each of these Markdown files is injected *under* an `#` (H1) section of the system prompt, so start their own headings at `##` (H2) and go deeper from there. Using `#` inside a knowledge file would flatten the prompt's hierarchy.

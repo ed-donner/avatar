@@ -36,7 +36,7 @@ export interface ChatBody {
 export interface StreamHandlers {
   onTool?: (tool: string) => void;
   onToken?: (text: string) => void;
-  onInstant?: (faq: number) => void;
+  onInstant?: (faq: number | "list") => void;
   onDone?: (messageId: number, needsAttention: boolean) => void;
   onError?: (message: string) => void;
 }

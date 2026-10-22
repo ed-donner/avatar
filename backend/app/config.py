@@ -37,6 +37,7 @@ class Settings:
     supabase_key: str
     session_secret: str
     cookie_secure: bool
+    curriculum_url: str
     frontend_dist: Path
     knowledge_dir: Path
 
@@ -61,6 +62,7 @@ def get_settings() -> Settings:
         supabase_key=_env("SUPABASE_KEY"),
         session_secret=_env("SESSION_SECRET") or f"avatar::{admin_password}",
         cookie_secure=_env("COOKIE_SECURE") == "1",
+        curriculum_url=_env("CURRICULUM_URL"),
         frontend_dist=Path(_env("FRONTEND_DIST") or REPO_ROOT / "frontend" / "dist"),
         knowledge_dir=Path(_env("KNOWLEDGE_DIR") or REPO_ROOT / "knowledge"),
     )

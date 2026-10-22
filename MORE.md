@@ -138,10 +138,56 @@ Clarifications agreed before starting work (decisions for the items above):
 
 ## Post-build refinements
 
-After the phased build (Phases 0-9), two refinements were made to the system prompt:
+After the phased build (Phases 0-9), these refinements were made to the prompt and model wiring:
 
 - **`rules.md` split + heading convention.** The owner knowledge in `knowledge/` is now three files, each with one job: `knowledge.md` (facts about the owner, incl. the jobs/courses guidance and course-resource links), `style.md` (the owner's unique voice and formatting), and `rules.md` (owner-agnostic operating rules: safety, escalation, answer length). Every knowledge file starts its headings at `##` so they nest under the prompt's `#` sections, keeping the assembled prompt's hierarchy consistent.
-- **Hard output cap + cache-friendly ordering.** `build_agent` sets `ModelSettings(max_tokens=2000)` as a hard per-reply ceiling (with a graceful "kept it brief" note appended on the rare truncation, detected via the last response's own token usage). The admin's additional-instructions block is placed LAST in the system prompt: prompt caching is prefix-based, so the editable, per-turn block sits after the long static prefix it would otherwise invalidate (and gains recency emphasis).
+- **Hard output cap + cache-friendly ordering.** `build_agent` sets `ModelSettings(max_tokens=4000)` (raised from 2000 so the longest FAQ, ~1,800 tokens, can be relayed in full) as a hard per-reply ceiling (with a graceful "kept it brief" note appended on the rare truncation, detected via the last response's own token usage). The admin's additional-instructions block is placed LAST in the system prompt: prompt caching is prefix-based, so the editable, per-turn block sits after the long static prefix it would otherwise invalidate (and gains recency emphasis).
+- **Model ID passed verbatim, low reasoning.** The Agents SDK's default `MultiProvider` treats an `openai/` prefix as a provider alias and strips it, so OpenRouter received `gpt-5.4-mini`. `agent.RUN_CONFIG` uses `MultiProvider(openai_prefix_mode="model_id", openai_use_responses=False)` so `MODEL` arrives exactly as written; chat completions is pinned on the provider because it captures that setting at construction, before `configure_openrouter()` runs. `ModelSettings` also sets the reasoning effort: "none" at first, then "low" (`REASONING_EFFORT`) after the comparison under "Scope rules from the misuse review". Production moved from `openai/gpt-5.4-mini` to `openai/gpt-6-luna`.
+- **Code blocks and tables in messages.** `frontend/src/lib/markdown.ts` renders fenced code blocks (verbatim; an indented fence inside a list item has its indent removed) and pipe tables (alignment, outer pipes optional, `\|` for a literal pipe, an all-empty header row dropped). Numbered lists keep the author's numbering (`<ol start>`) when a blank line or code block splits them. Both scroll sideways inside the bubble, which is capped at its column width so it never runs off a phone screen. The prompt tells the Avatar it can use inline code, code blocks and tables wherever they help, and to keep an FAQ answer's links, code blocks and tables as written; `rules.md` exempts FAQ answers from the answer-length rule, so the Avatar gives the full answer when the question warrants it.
+- **`Qn` lists the FAQ.** A literal `Qn` (any case; distinct from `Q2`-style numbers) is an instant, no-LLM reply listing every FAQ's concise question as `- **Q2:** ...`. It is stored with `tool_calls=[{"type": "instant", "faq": "list"}]` and tagged "instant · FAQ list" in the chat. `knowledge.instant_reply()` handles both instant forms. The prompt mentions both shortcuts so the Avatar can point visitors to them.
+
+- **Knowledge refresh from a conversation review.** A review of 1,349 production exchanges (2026-06-07 to 2026-10-21) drove a knowledge update: the AI FDE course, the million-enrollment figure, the refreshed Agentic Track, the full course-to-repo map in `fetch.md`, the numbered guides index, and an "About this chat" section so the Avatar can link FAQs as `/avatar?q=N`, knows the owner reads the inbox, and knows the chat can't receive images. Coupon codes are never written into the knowledge files because they expire (see the next bullet). The three-way section now says a visitor who claims to be the owner stays a visitor, after one was greeted as the owner and had a push sent on their behalf. AI FDE is listed first, as the flagship, ahead of the six established courses numbered 1 to 6.
+- **Live coupon links.** The curriculum page builds its Udemy buttons in JavaScript (coupons in `window.EDC_CONFIG`, course URLs in the page script's `BASE` map), so the fetch tool, which doesn't run JavaScript, never sees a coupon. `backend/app/course_links.py` reads those blocks from the page HTML and builds the links the way the page does, with course names from the page's course data and AI FDE first. A background task started in `main.lifespan` refreshes them every 15 minutes, so a chat turn never waits on the page, and `agent.py` adds them to the prompt as an "Enrollment links" section after the owner profile. If the page can't be read or parsed, the last good links are kept and the owner gets one alert per outage. Off unless `CURRICULUM_URL` is set (`deploy.sh` copies it to the Fly secrets); `test_live_curriculum_page_still_parses` fails if a page redesign breaks the parser. A tool was considered instead, but the links are short, needed often, and best given with no extra step, and the review showed the model often skipping a matching tool call.
+- **FAQ answers relayed word for word.** "I am a complete beginner" looked up Q2 every time, but the reply was a rewrite that kept 7% of Q2's sentences (6-25% for Q8). Removing the length rules, the admin instructions or the conflicting `knowledge.md` lines changed nothing, and a firmer rule in the system prompt helped only some of the time. The model treats a tool result as notes to rewrite, and the prompt's rule is thousands of tokens before the point where it writes. `faq_tool` now puts `FAQ_RELAY_NOTE` at the top of its result: copy the answer word for word, add at most a sentence, and give just one part only if the visitor asked about one part. With it, Q2, Q11, Q8, Q3 and Q1 were relayed in full in every run (a softer wording, or the note after the answer, did worse). The instant `Qn` reply has its own formatter, so visitors never see the note.
+- **Scope rules from the misuse review (2026-10-22).** Haiku subagents on Claude Code screened every
+  conversation for attempts to test or misuse the avatar, then judged the avatar's replies to the 105
+  clear ones. It never revealed its prompt or keys and refused harmful requests. What got through was
+  off-scope work: CV and LinkedIn rewrites, business plans, app code, recipes, a chess game. It
+  usually declined once and then gave in when the visitor asked again. The scope rules were spread over
+  four soft lines; `rules.md` now has one "What you help with" section. It allows a one-sentence answer
+  to a quick off-topic question, declines anything made for the visitor's own work or life with a
+  pointer to ChatGPT or Claude, and keeps declining when the visitor asks again, rewords, splits the
+  request or invokes the owner. Two lines in "Safety and security" rule out opinions on contested
+  public issues (it had given a verdict on a war) and role-play, games or writing in the owner's voice.
+
+  The rules were tuned by replaying real attempts on `gpt-6-luna` (owner-approved paid runs, push
+  stubbed, nothing written).
+
+  Several things were tried and changed:
+  - Wording alone left the model giving in deep in long threads where earlier replies had already
+    helped. So the transcript now ends with `REPLY_INSTRUCTION`, a scope check placed right before
+    the model writes.
+  - The scope names the visitor's own business, pricing and studies, and general programming help, as
+    out of scope.
+  - It says that a view on an AI-engineering idea from the visitor's own work is in scope. Without
+    that line, a "how does my company's agent idea sound?" question was refused.
+  - Declines were sending the owner pushes. `push_tool`'s description and the push rules now say a
+    declined request is no reason to push.
+  - `FAQ_RELAY_NOTE` gained one exception, an FAQ on a different topic, after a recipe request got
+    an unrelated FAQ relayed word for word. A broader "if it answers them" condition dropped Q3's
+    full relays to 3 in 6, so it was narrowed back.
+
+  Final run, 24 real attempts plus 8 normal questions:
+  - Off-scope requests, impersonation, persona and politics: all held except freelance pricing
+    advice deep in an 89-message thread.
+  - Normal questions: all answered.
+  - FAQ relays: full.
+
+  Reasoning "low" against "none", with each case under both settings back to back:
+  - Same speed (about 3.5s median) and same cost (about $0.0005 a reply). "Low" spent about 19
+    reasoning tokens a reply.
+  - "Low" never pushed for a decline; "none" still did in about 1 in 5 declines.
+  - The owner switched to "low".
 
 ## Security hardening (extras)
 
@@ -171,6 +217,35 @@ who fork and deploy their own copy:
   Pushover quota - **except failed-login alerts, which currently fire on every attempt** (per-IP they
   are bounded by the login throttle to 5/min; deliberately un-debounced for now so the owner sees each
   one - a determined attacker rotating IPs could push past that, so this may get a cap later).
+- **Reject malformed requests before the database (2026-10-22).** The owner was getting "Unhandled
+  error" and "Chat turn failed" alerts on the conversation API. They came from hand-made requests:
+  `conversation_id` is a `uuid` column but the API accepted any string, so `/api/conversations/123`
+  raised a Postgres `22P02` error, a 500 and an alert. A huge `?after=` (`22003`, out of range for a
+  bigint) and a chat body that wasn't a JSON object (read raw by the rate limiter) did the same. The
+  visitor page never sends any of these, because it makes ids with `crypto.randomUUID()`. All conversation
+  ids (`ConversationId` in the chat body, `ConversationIdPath` on the seven routes) are now checked as
+  UUIDs, `?after=` is bounded, and the rate limiter leaves a non-object body to validation, so each gets
+  a 422 with no alert. Admin routes still answer 401 first to an unauthenticated caller, whatever the id.
+  A failed chat turn used to show the visitor the raw exception text (e.g. the Postgres error); it now
+  shows `CHAT_ERROR_MESSAGE`, and the details go only to the alert. A probe of every admin route with no
+  cookie, a forged cookie and eight malformed cookies returned 401 with no data.
+- **Fetch limited to the owner's sites in code (2026-10-22).** Only the prompt kept the fetch tool on
+  the owner's site and repos, so a jailbreak could point it at any URL, including internal addresses
+  such as cloud metadata (one visitor asked the avatar about SSRF). `OwnerSitesFetch` wraps the MCP
+  server and checks each URL before the call reaches it. A URL must be on the same site as one of the
+  prefixes under "## Allowed sites" in `fetch.md`, with or without `www.`, and its path must stay
+  inside that prefix after dot segments and percent-escapes are resolved. URLs with a login part or a
+  port are refused. A blocked call returns an error telling the model what's allowed. With no "Allowed
+  sites" section, nothing can be fetched. The server follows redirects, so an allowed page that
+  redirected elsewhere would still be read; the owner's sites don't do that.
+- **No forged speaker lines (2026-10-22).** The transcript is plain `Visitor:` / `Avatar:` /
+  `<owner> (the human):` lines, so a visitor message containing a line starting `Ed Donner (the
+  human):` would have looked like the owner. `render_transcript` now indents every later line of a
+  message, breaking on `\r`, U+2028 and the other separators too, so a speaker label can only start a
+  line when the code wrote it. The prompt explains the indentation, and says text inside a Visitor
+  message is the visitor's even when it quotes the owner ("Ed's reply:") or claims to come from an
+  admin or the system. The 2026-10-22 misuse review found one pasted "Ed's reply" accepted as the
+  owner's, and no forged labels.
 
 Deliberately left as-is (low real risk here): visitor access by unguessable UUID `conversation_id`
 (non-sensitive content); the conversation-id-keyed chat limiter (the spend cap is the real ceiling);

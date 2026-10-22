@@ -65,3 +65,43 @@ def test_rate_limit_is_per_conversation(client, monkeypatch):
 
         for cid in cids:
             db.get_client().table(db.TABLE).delete().eq("conversation_id", cid).execute()
+
+
+def test_malformed_requests_get_422_without_alerting(client, monkeypatch):
+    """Hand-made bad ids and bodies are rejected before the database, so they don't page the owner."""
+    alerts = []
+    monkeypatch.setattr("app.push.notify_error", lambda summary, **kwargs: alerts.append(summary))
+    cid = "88ae83e8-5046-4e7d-a8a8-a1f1a5f8bcb6"
+    responses = [
+        client.get("/api/conversations/not-a-uuid"),
+        client.get(f"/api/conversations/{cid}?after=99999999999999999999"),  # beyond a Postgres bigint
+        client.post("/api/chat", json={"conversation_id": "not-a-uuid", "message": "hi"}),
+        client.post("/api/chat", content=b""),
+        client.post("/api/chat", json=[1, 2]),
+    ]
+    assert [r.status_code for r in responses] == [422] * 5
+    assert alerts == []
+
+
+def test_admin_routes_check_auth_before_the_id(client):
+    """An unauthenticated caller gets 401 whatever the id, and learns nothing from validation errors."""
+    assert client.get("/admin/conversations/not-a-uuid").status_code == 401
+    assert client.post("/admin/archive/not-a-uuid/restore").status_code == 401
+
+
+def test_chat_error_hides_internal_details(client, conversation_id, monkeypatch):
+    """A failed turn shows the visitor a generic message; the details go only to the owner's alert."""
+    from app.main import CHAT_ERROR_MESSAGE
+
+    alerts = []
+    monkeypatch.setattr("app.push.notify_error", lambda summary, **kwargs: alerts.append(summary))
+
+    async def failing_stream(transcript):
+        raise RuntimeError("internal database detail")
+        yield  # makes this an async generator
+
+    monkeypatch.setattr("app.agent.stream_agent", failing_stream)
+    response = client.post("/api/chat", json={"conversation_id": conversation_id, "message": "hello"})
+    assert CHAT_ERROR_MESSAGE in response.text
+    assert "internal database detail" not in response.text
+    assert any("internal database detail" in alert for alert in alerts)

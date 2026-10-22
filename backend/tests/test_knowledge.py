@@ -83,6 +83,22 @@ def test_get_instant_answer_unknown():
     assert "not found" in knowledge.get_instant_answer(9999).lower()
 
 
+def test_instant_reply_lists_every_faq_for_literal_qn():
+    for message in ("Qn", "qn", "QN", "  qN  "):
+        marker, reply = knowledge.instant_reply(message)
+        assert marker == "list"
+    for faq in knowledge.faqs():
+        assert f"- **Q{faq['faq']}:** {faq['query']}" in reply
+
+
+def test_instant_reply_number_and_non_matches():
+    marker, reply = knowledge.instant_reply("q2")
+    assert marker == 2
+    assert reply == knowledge.get_instant_answer(2)
+    for message in ("Q n", "Qn please", "what is Qn", "Q"):
+        assert knowledge.instant_reply(message) is None
+
+
 def test_faq_list_text_non_empty():
     text = knowledge.faq_list_text()
     assert text

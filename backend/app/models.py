@@ -9,6 +9,12 @@ Role = Literal["visitor", "avatar", "human"]
 # A required, non-blank text field (trimmed; rejects empty/whitespace-only with 422).
 NonBlank = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 
+# Conversation ids are UUIDs: the visitor page makes them with crypto.randomUUID() and the column is
+# uuid. Checking the format at the API turns a hand-made bad id into a 422, instead of a database
+# error, a 500 and an owner alert.
+UUID_PATTERN = r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+ConversationId = Annotated[str, StringConstraints(pattern=UUID_PATTERN)]
+
 
 class Message(BaseModel):
     """A single stored conversation row."""
@@ -27,7 +33,7 @@ class Message(BaseModel):
 class ChatRequest(BaseModel):
     """Visitor chat submission."""
 
-    conversation_id: str
+    conversation_id: ConversationId
     message: str
     visitor_name: str | None = None
 

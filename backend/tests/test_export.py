@@ -6,7 +6,8 @@ from tests.conftest import make_conversation
 
 
 def _parse_jsonl(text: str) -> list[dict]:
-    return [json.loads(line) for line in text.splitlines() if line.strip()]
+    # Split on "\n" only: splitlines() also breaks on U+2028 etc., which can appear inside a message.
+    return [json.loads(line) for line in text.split("\n") if line.strip()]
 
 
 def test_export_routes_guarded(client):

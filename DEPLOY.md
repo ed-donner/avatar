@@ -120,7 +120,7 @@ Set as **Fly secrets** (sensitive, pulled from `.env` by `deploy.sh`):
 
 Notes:
 - **`SESSION_SECRET`** (now in `.env`) signs the admin session cookie. Setting it explicitly means rotating `ADMIN_PASSWORD` later won't unexpectedly invalidate the session-secret derivation. Use a long random value.
-- **`MODEL`** is whatever is in `.env`. For production, set `MODEL=openai/gpt-5.4-mini` before deploying (this is what the reference deployment runs); `openai/gpt-5.4-nano` is the cheaper dev/test model and the code default. You can change it later with `fly secrets set -a <your-app> MODEL=openai/gpt-5.4-mini`.
+- **`MODEL`** is whatever is in `.env`. For production, set `MODEL=openai/gpt-6-luna` before deploying (this is what the reference deployment runs); `openai/gpt-5.4-nano` is the cheaper dev/test model and the code default. You can change it later with `fly secrets set -a <your-app> MODEL=openai/gpt-6-luna`.
 - Secrets can be set/changed any time: `fly secrets set -a avatar-ed KEY=value` (triggers a rolling restart). View names with `fly secrets list -a avatar-ed` (values are never shown).
 
 ## 4. Deploy

@@ -224,13 +224,24 @@ body {
 .bubble {
   padding: var(--space-3) var(--space-4); border-radius: var(--radius-lg);
   font-size: var(--text-md); line-height: var(--leading-relaxed); color: var(--text);
-  border: 1px solid transparent; max-width: 560px; width: fit-content;
+  border: 1px solid transparent; max-width: min(560px, 100%); width: fit-content;
   overflow-wrap: break-word;
 }
 .bubble p { margin: 0 0 0.6em; } .bubble p:last-child { margin-bottom: 0; }
 .bubble a { color: var(--blue-ink); text-decoration: underline; text-underline-offset: 2px;
   text-decoration-color: var(--blue-line); }
 .bubble strong { font-weight: 700; }
+/* Fenced code and pipe tables scroll sideways inside the bubble instead of widening it. */
+.bubble pre, .bubble .md-table { margin: 0 0 0.6em; overflow-x: auto; }
+.bubble pre:last-child, .bubble .md-table:last-child { margin-bottom: 0; }
+.bubble pre { padding: var(--space-3); background: var(--surface-sunken); border: 1px solid var(--border);
+  border-radius: var(--radius-md); font-family: var(--font-mono); font-size: var(--text-sm); line-height: 1.55; }
+.bubble code { font-family: var(--font-mono); font-size: 0.88em; }
+.bubble pre code { font: inherit; }
+.bubble table { border-collapse: collapse; font-size: var(--text-sm); }
+.bubble th, .bubble td { padding: var(--space-1) var(--space-3); border: 1px solid var(--border);
+  text-align: left; vertical-align: top; }
+.bubble th { background: var(--surface-sunken); font-weight: 700; }
 
 /* Visitor — right aligned */
 .msg--visitor { flex-direction: row-reverse; margin-left: auto; }

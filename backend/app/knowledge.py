@@ -32,6 +32,14 @@ def fetch_text() -> str:
 
 
 @lru_cache
+def fetch_allowed_prefixes() -> tuple[str, ...]:
+    """The URL prefixes under "## Allowed sites" in fetch.md, the only addresses the fetch tool may
+    open. With no such section, nothing is allowed."""
+    _, found, section = fetch_text().partition("## Allowed sites")
+    return tuple(re.findall(r"^- (https?://\S+)", section, re.MULTILINE)) if found else ()
+
+
+@lru_cache
 def rules_text() -> str:
     """The behaviour and safety rules (rules.md), included in the system prompt."""
     return (get_settings().knowledge_dir / "rules.md").read_text(encoding="utf-8")
@@ -102,3 +110,23 @@ def get_instant_answer(number: int) -> str:
     if not faq:
         return "That question number was not found in the FAQ."
     return f"**Q{number}:** {faq['question']}\n\n{faq['answer']}"
+
+
+def get_faq_list() -> str:
+    """The visitor-facing reply for a literal 'Qn': every FAQ's concise question with its number."""
+    if not faqs():
+        return "There are no FAQ questions yet."
+    lines = "\n".join(f"- **Q{faq['faq']}:** {faq['query']}" for faq in faqs())
+    return f"Here are all the FAQ questions. Type `Q` and a number, like `Q2`, for an instant answer.\n\n{lines}"
+
+
+def instant_reply(message: str) -> tuple[int | str, str] | None:
+    """The (faq marker, reply) for a message answered instantly with no LLM call, else None.
+
+    A literal 'Qn' (any case) lists every FAQ question (marker "list"); a bare 'Q2' answers
+    that FAQ (marker 2).
+    """
+    if message.strip().lower() == "qn":
+        return "list", get_faq_list()
+    number = instant_faq_number(message)
+    return (number, get_instant_answer(number)) if number is not None else None

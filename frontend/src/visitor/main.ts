@@ -122,7 +122,7 @@ function renderAvatar(msg: Message): void {
   if (Array.isArray(msg.tool_calls)) {
     for (const call of msg.tool_calls as Array<Record<string, unknown>>) {
       if (call.type === "instant") {
-        insertInstantTag(row, Number(call.faq));
+        insertInstantTag(row, call.faq === "list" ? "list" : Number(call.faq));
       } else {
         const name = call.tool ?? call.name;
         if (typeof name === "string") {
@@ -180,10 +180,10 @@ function addToolStatus(row: HTMLElement, tool: string, done: boolean): void {
   body.insertBefore(status, bubble);
 }
 
-function insertInstantTag(row: HTMLElement, faq: number): void {
+function insertInstantTag(row: HTMLElement, faq: number | "list"): void {
   const meta = row.querySelector(".msg-meta")!;
   const time = meta.querySelector(".msg-time");
-  const tag = el("span", { class: "instant-tag" }, [`instant · Q${faq}`]);
+  const tag = el("span", { class: "instant-tag" }, [faq === "list" ? "instant · FAQ list" : `instant · Q${faq}`]);
   meta.insertBefore(tag, time);
 }
 

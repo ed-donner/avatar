@@ -53,6 +53,6 @@ export interface FaqItem extends FaqInput {
 export type ChatEvent =
   | { type: "tool"; phase: "called"; tool: string }
   | { type: "token"; text: string }
-  | { type: "instant"; faq: number }
+  | { type: "instant"; faq: number | "list" } // "list": the literal "Qn" (every FAQ question)
   | { type: "done"; message_id: number; needs_attention: boolean }
   | { type: "error"; message: string };

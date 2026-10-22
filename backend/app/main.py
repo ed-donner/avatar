@@ -1,11 +1,13 @@
 """FastAPI app: public + admin APIs, SSE chat, and static frontend serving."""
 
+import asyncio
 import json
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
+from typing import Annotated
 
-from fastapi import APIRouter, Cookie, Depends, FastAPI, HTTPException, Request, Response
+from fastapi import APIRouter, Cookie, Depends, FastAPI, HTTPException, Path, Query, Request, Response
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.sse import EventSourceResponse
 from fastapi.staticfiles import StaticFiles
@@ -13,7 +15,7 @@ from limits import parse
 from limits.storage import MemoryStorage
 from limits.strategies import MovingWindowRateLimiter
 
-from app import agent, db, knowledge, push
+from app import agent, course_links, db, knowledge, push
 from app.auth import (
     clear_session_cookie,
     is_authenticated,
@@ -33,14 +35,25 @@ from app.models import (
     InstructionsBody,
     LoginRequest,
     Message,
+    UUID_PATTERN,
 )
+
+# A malformed conversation id or ?after= is rejected with a 422 here, before it reaches the database
+# (where it would raise, return a 500 and alert the owner). The visitor page never sends either.
+ConversationIdPath = Annotated[str, Path(pattern=UUID_PATTERN)]
+AfterId = Annotated[int | None, Query(ge=0, le=2**63 - 1)]  # message ids are a Postgres bigint
+
+# What a visitor sees when a chat turn fails; the details go to the owner's alert, not the browser.
+CHAT_ERROR_MESSAGE = "I couldn't finish that reply. Please try again in a moment."
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Wire up OpenRouter once at startup."""
+    """Wire up OpenRouter once at startup, and keep the course coupon links fresh in the background."""
     agent.configure_openrouter()
+    links_refresher = asyncio.create_task(course_links.keep_fresh())
     yield
+    links_refresher.cancel()
 
 
 app = FastAPI(title="Avatar", lifespan=lifespan)
@@ -92,7 +105,12 @@ def clamp_message(text: str) -> str:
 
 async def enforce_chat_rate_limit(request: Request) -> None:
     """Reject more than 20 chat messages per minute from one conversation_id."""
-    body = await request.json()
+    try:
+        body = await request.json()
+    except ValueError:
+        return  # not JSON: the endpoint's own validation rejects it with a 422
+    if not isinstance(body, dict):
+        return  # likewise for JSON that isn't an object
     if not _rate_limiter.hit(_chat_rate, str(body.get("conversation_id", ""))):
         raise HTTPException(status_code=429, detail="Too many messages; please slow down.")
 
@@ -107,7 +125,7 @@ def get_config() -> ConfigResponse:
 
 
 @api.get("/conversations/{conversation_id}", response_model=ConversationThread)
-def get_conversation(conversation_id: str, after: int | None = None) -> ConversationThread:
+def get_conversation(conversation_id: ConversationIdPath, after: AfterId = None) -> ConversationThread:
     """Full thread (all roles) for restore-from-cookie and visitor polling."""
     rows = db.get_messages(conversation_id, after_id=after)
     return ConversationThread(
@@ -129,16 +147,16 @@ async def _chat_events(request: ChatRequest) -> AsyncIterator[dict]:
         read=False,
     )
 
-    instant = knowledge.instant_faq_number(message)
+    instant = knowledge.instant_reply(message)
     if instant is not None:
-        answer = knowledge.get_instant_answer(instant)
+        faq, answer = instant
         row = db.insert_message(
             request.conversation_id,
             "avatar",
             answer,
-            tool_calls=[{"type": "instant", "faq": instant}],
+            tool_calls=[{"type": "instant", "faq": faq}],
         )
-        yield {"type": "instant", "faq": instant}
+        yield {"type": "instant", "faq": faq}
         yield {"type": "token", "text": answer}
         yield {"type": "done", "message_id": row["id"], "needs_attention": False}
         return
@@ -170,7 +188,7 @@ async def chat(request: ChatRequest) -> AsyncIterator[dict]:
             yield event
     except Exception as exc:  # noqa: BLE001 - surface failures to the client
         push.notify_error(f"Chat turn failed: {exc}", category="chat")
-        yield {"type": "error", "message": str(exc)}
+        yield {"type": "error", "message": CHAT_ERROR_MESSAGE}
 
 
 # ---- Admin API ----
@@ -220,7 +238,7 @@ def admin_list_conversations() -> list[ConversationSummary]:
     response_model=ConversationThread,
     dependencies=[Depends(require_admin)],
 )
-def admin_get_conversation(conversation_id: str) -> ConversationThread:
+def admin_get_conversation(conversation_id: ConversationIdPath) -> ConversationThread:
     """Open a thread in one round-trip: mark read + clear attention and return the rows."""
     rows = db.open_conversation(conversation_id)
     return ConversationThread(
@@ -235,7 +253,7 @@ def admin_get_conversation(conversation_id: str) -> ConversationThread:
     response_model=Message,
     dependencies=[Depends(require_admin)],
 )
-def admin_post_message(conversation_id: str, request: HumanMessageRequest) -> Message:
+def admin_post_message(conversation_id: ConversationIdPath, request: HumanMessageRequest) -> Message:
     """Insert a human message (the Avatar does not react to it)."""
     row = db.insert_message(
         conversation_id,
@@ -248,7 +266,7 @@ def admin_post_message(conversation_id: str, request: HumanMessageRequest) -> Me
 
 
 @admin.post("/conversations/{conversation_id}/resolve", dependencies=[Depends(require_admin)])
-def admin_resolve(conversation_id: str) -> dict:
+def admin_resolve(conversation_id: ConversationIdPath) -> dict:
     """Clear the needs-attention flag for a conversation."""
     db.clear_attention(conversation_id)
     return {"ok": True}
@@ -258,7 +276,7 @@ def admin_resolve(conversation_id: str) -> dict:
 
 
 @admin.post("/conversations/{conversation_id}/archive", dependencies=[Depends(require_admin)])
-def admin_archive_conversation(conversation_id: str) -> dict:
+def admin_archive_conversation(conversation_id: ConversationIdPath) -> dict:
     """Move a whole conversation from the inbox into the archive."""
     return {"ok": True, "messages": db.archive_conversation(conversation_id)}
 
@@ -280,7 +298,7 @@ def admin_list_archive() -> list[ConversationSummary]:
     response_model=ConversationThread,
     dependencies=[Depends(require_admin)],
 )
-def admin_get_archived(conversation_id: str) -> ConversationThread:
+def admin_get_archived(conversation_id: ConversationIdPath) -> ConversationThread:
     """Read-only view of an archived conversation (does not change any state)."""
     rows = db.get_archived_messages(conversation_id)
     return ConversationThread(
@@ -291,7 +309,7 @@ def admin_get_archived(conversation_id: str) -> ConversationThread:
 
 
 @admin.post("/archive/{conversation_id}/restore", dependencies=[Depends(require_admin)])
-def admin_restore_conversation(conversation_id: str) -> dict:
+def admin_restore_conversation(conversation_id: ConversationIdPath) -> dict:
     """Move a whole conversation from the archive back into the inbox."""
     return {"ok": True, "messages": db.restore_conversation(conversation_id)}
 

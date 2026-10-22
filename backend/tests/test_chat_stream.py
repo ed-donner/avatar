@@ -37,6 +37,24 @@ def test_instant_answer_no_model(client, conversation_id):
     assert rows[1]["tool_calls"] == [{"type": "instant", "faq": 2}]
 
 
+def test_instant_faq_list_no_model(client, conversation_id):
+    """A literal 'qn' (any case) returns the list of all FAQ questions with no model call."""
+    with client.stream(
+        "POST",
+        "/api/chat",
+        json={"conversation_id": conversation_id, "message": "qn", "visitor_name": "EF"},
+    ) as response:
+        assert response.status_code == 200
+        body = "".join(response.iter_text())
+    events = _parse_sse(body)
+    assert [e["type"] for e in events] == ["instant", "token", "done"]
+    assert events[0]["faq"] == "list"
+    assert "- **Q2:** " in events[1]["text"]
+
+    rows = db.get_messages(conversation_id)
+    assert rows[1]["tool_calls"] == [{"type": "instant", "faq": "list"}]
+
+
 @pytest.mark.llm
 def test_chat_streams_tokens_and_persists(client, conversation_id):
     """A plain message streams token events, a done event, and persists the avatar row."""
