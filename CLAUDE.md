@@ -43,14 +43,56 @@ phase-by-phase build and handoff record is in `MORE_PHASES.md`. Read both when c
 
 ## Current state (2026-10-22)
 
-Production (`avatar-ed`) is release v7, deployed 2026-06-06 from commit `a2ef59a`, still running
-`openai/gpt-5.4-mini`. Everything below is uncommitted on branch `v2` and not yet deployed, including
-the new files `backend/app/course_links.py` and `backend/tests/test_course_links.py`.
-`scripts/deploy.sh` ships it and copies `MODEL` and `CURRICULUM_URL` from `.env` into the Fly
-secrets. Details are in `MORE.md` "Post-build refinements" and "Security hardening (extras)".
+Production (`avatar-ed`) is release v8, deployed 2026-10-22 from branch `v2` (commit `fe67c08`), on
+`openai/gpt-6-luna`. The release before it, v7 (commit `a2ef59a`, 2026-06-06), ran `gpt-5.4-mini`.
+Since `fe67c08`, the page-caching fix below is uncommitted and not deployed, and so is the removal
+of the chat box's `autofocus` attribute: Chrome blocks it inside the cross-origin iframe on Ed's site
+and logs a warning, and `main.ts` focuses the box itself anyway. `scripts/deploy.sh`
+copies `MODEL` and `CURRICULUM_URL` from `.env` into the Fly secrets. Details are in `MORE.md`
+"Post-build refinements" and "Security hardening (extras)".
 
-- **Model:** `.env` has `MODEL="openai/gpt-6-luna"`, with reasoning effort "low" (`REASONING_EFFORT`
-  in `agent.py`, switched from "none" on 2026-10-22; see the misuse review below). `agent.RUN_CONFIG`
+- **Page caching (2026-10-26, not deployed):** after the deploy, `?q=` pages failed in Ed's browser
+  with a 404 for `main-CqFiJY_5.js`, the v7 bundle. The pages had no `Cache-Control`, so the browser
+  guessed they stayed fresh for about a tenth of their age (v7's page was months old) and kept
+  reusing the v7 page, whose scripts the new image doesn't have. `main.py` now sends
+  `Cache-Control: no-cache` with `/` and `/admin`. `AssetFiles` answers a request for a missing
+  `/assets/*.js` with `STALE_PAGE_SCRIPT`, which reloads the page once under a `fresh=` parameter the
+  cache has no copy of. Checked in Chrome with the rebuilt v7 page; tests in `test_static.py`.
+- **Relay requests (2026-10-22, closed 2026-10-26):** "please message Ed and tell him that Tom would like to
+  connect" got a trimmed LinkedIn FAQ (Q56) with no email request and no push. Either "connect" pulls
+  it to Q56 (the admin instructions push LinkedIn questions to the FAQ tool), or the "What you help
+  with" scope makes a relay look out of scope. A check on 2026-10-26 (84 cases, $0.03, priority with
+  reasoning "none", scratchpad `push_check.py`; the fix below applied in memory only):
+  - Declines: 40 of 40 declined with a ChatGPT/Claude pointer, and none pushed.
+  - "Tell him that Tom/Sarah..." relays: pushed 18 of 18 on the first turn, nearly always without
+    an email, against rules.md's "first ask for their email". 7 of those replies then asked for the
+    email "so I can notify Ed", after already pushing. Ed's exact message pushed 6 of 6.
+  - "I'd like to connect with Ed, can you pass that on?": the current rules gave only the LinkedIn
+    FAQ (3 of 3), with no email request. With the fix it asked for an email 3 of 3.
+  - Once the visitor gave an email: pushed 12 of 12, with the email in the note.
+  The fix: in "What you help with", "Passing a message to your human, or helping a visitor get in
+  touch with them, is always in scope (see below)."; and the get-in-touch bullet becomes "If a visitor
+  wants to get in touch, or asks you to pass a message to your human (for themselves or someone else),
+  first ask for their email;". Ed's decision (2026-10-26): a relay pushing straight away is fine,
+  and none of these problems is serious, so rules.md is unchanged and the fix isn't applied.
+- **Latency (2026-10-26):** production replies got slower with v8: median 4.7s to the stored reply
+  (v7: 3.0s), FAQ replies 6.3s (v7: 3.8s), from Supabase timestamps. An 80-turn test on the real
+  agent from Ed's Mac (scratchpad `latency_test.py`, $0.05, push stubbed) crossed service tier with
+  reasoning effort:
+  - `service_tier: "priority"` (OpenRouter passes it through and OpenAI served it) streams text
+    about 1.5x faster (about 220 vs 150 tokens/s) at twice the price, but doesn't shorten the wait
+    for the first token.
+  - Reasoning "none" vs "low" made no consistent difference ("low" spends 0-2 reasoning tokens).
+  - Fixed costs before the model starts: `stream_agent` launches a new `mcp-server-fetch` every turn
+    (about 0.6s), and `build_system_prompt` reads the admin instructions from Supabase every turn.
+    An FAQ reply also needs two model calls; the lookup call alone took about 1.4-2.3s.
+  Ed chose priority with reasoning "none" (uncommitted, not deployed; see Model below). The fixed
+  costs above are unchanged and Ed's to decide.
+
+- **Model:** `.env` has `MODEL="openai/gpt-6-luna"`, with reasoning effort "none" and the priority
+  service tier (`REASONING_EFFORT` and `SERVICE_TIER` in `agent.py`, set 2026-10-26, uncommitted).
+  "Low" was used from 2026-10-22 because "none" then pushed the owner about 1 in 5 declined requests
+  (see the misuse review below); that hasn't been re-checked on "none". `agent.RUN_CONFIG`
   uses `MultiProvider(openai_prefix_mode="model_id", openai_use_responses=False)` so OpenRouter
   receives the full `openai/...` ID; by default the SDK strips that prefix. Chat completions is pinned
   on the provider because it captures that choice when built, before `configure_openrouter()` runs.
@@ -94,9 +136,11 @@ secrets. Details are in `MORE.md` "Post-build refinements" and "Security hardeni
   - Push policy: Ed doesn't mind pushes (he declined a push rate cap). He hasn't answered on a
     no-push rule for abusive or fake emails.
 
-  Supabase items for Ed:
-  - Stale FAQs after the Agentic refresh (Q10, Q12, Q19, Q20).
-  - Two outdated passages in the admin instructions, on FAQ handling and on web search.
+  Supabase edits (2026-10-22, done with Ed's approval; the rows before the edits are in the
+  scratchpad's `supabase_backup_1022.json`): the admin instructions' web-search, FAQ-list and
+  architecture passages, and FAQs Q2, Q3, Q10 (CrewAI pinned to 1.14.4 per `3_crewai/README.md`),
+  Q12 (now points to Q68 and Render), Q19, Q20, Q28 and Q40. Ed hasn't decided on Q15, Q26, Q29, Q50,
+  Q51, Q57, Q62 or the dated model names in Q9, Q30, Q46 and Q47.
 
   On Ed's site, the curriculum page's meta description still says "six AI courses", and its static
   HTML has both "Here are the 6 courses" and "Here are the 7 courses" (JavaScript shows one), which
@@ -139,12 +183,8 @@ secrets. Details are in `MORE.md` "Post-build refinements" and "Security hardeni
     tokens a reply.
   - Only "low" never pushed for a decline, so Ed chose it.
 
-  Still open (Ed's to do in Supabase): the admin instructions' passage on how the avatar itself is
-  built. The proposed replacement:
-
-  > say it's a simple Agentic RAG project, open source at https://github.com/ed-donner/avatar, and
-  > that Ed walks through how it's built in https://youtu.be/srlhW4H-Gtg. Don't describe its
-  > architecture, tools or model beyond that, and never guess at them.
+  The admin instructions' passage on how the avatar itself is built now uses the wording from this
+  review (see the Supabase edits above).
 
   Ask Ed before any further paid calls beyond the test suite.
 
@@ -162,4 +202,5 @@ secrets. Details are in `MORE.md` "Post-build refinements" and "Security hardeni
   and a Pushover alert (the source of the owner's "Unhandled error" alerts). A failed chat turn shows the
   visitor `CHAT_ERROR_MESSAGE`, not the raw exception. The admin API was probed and is protected.
 - **Tests:** `test_export.py` splits JSONL on `\n` only, because the production archive contains
-  U+2028, which `splitlines()` breaks on. 118 backend tests pass and the frontend builds.
+  U+2028, which `splitlines()` breaks on. There are 123 backend tests; all passed on 2026-10-26,
+  including the two that call the model (on priority with reasoning "none"), and the frontend builds.

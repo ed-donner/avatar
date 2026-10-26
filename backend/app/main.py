@@ -14,6 +14,8 @@ from fastapi.staticfiles import StaticFiles
 from limits import parse
 from limits.storage import MemoryStorage
 from limits.strategies import MovingWindowRateLimiter
+from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.types import Scope
 
 from app import agent, course_links, db, knowledge, push
 from app.auth import (
@@ -394,6 +396,33 @@ app.include_router(admin)
 settings = get_settings()
 DIST = settings.frontend_dist
 
+# The browser must check the pages with the server on every load (a cheap 304 when unchanged). Without
+# this header a browser guesses how long a page stays fresh, about a tenth of its age, so after a deploy
+# it kept showing the old page for days, and that page's hashed scripts no longer exist.
+PAGE_HEADERS = {"Cache-Control": "no-cache"}
+
+# Sent in place of a missing script. A page cached from an older release asks for that release's
+# scripts; this loads the page again under a URL the cache has no copy of, so the server sends the
+# current page (which drops the extra parameter along with ?q=). The parameter also stops a loop.
+STALE_PAGE_SCRIPT = """const url = new URL(location.href);
+if (!url.searchParams.has("fresh")) {
+  url.searchParams.set("fresh", String(Date.now()));
+  location.replace(url.href);
+}
+"""
+
+
+class AssetFiles(StaticFiles):
+    """The build's hashed assets. A missing script gets STALE_PAGE_SCRIPT instead of a 404."""
+
+    async def get_response(self, path: str, scope: Scope) -> Response:
+        try:
+            return await super().get_response(path, scope)
+        except StarletteHTTPException as exc:
+            if exc.status_code != 404 or not path.endswith(".js"):
+                raise
+            return Response(STALE_PAGE_SCRIPT, media_type="text/javascript", headers={"Cache-Control": "no-store"})
+
 
 @app.get("/")
 def index() -> FileResponse:
@@ -401,7 +430,7 @@ def index() -> FileResponse:
     target = DIST / "index.html"
     if not target.exists():
         raise HTTPException(status_code=404, detail="Frontend not built")
-    return FileResponse(target)
+    return FileResponse(target, headers=PAGE_HEADERS)
 
 
 @app.get("/admin")
@@ -410,10 +439,10 @@ def admin_page() -> FileResponse:
     target = DIST / "admin.html"
     if not target.exists():
         raise HTTPException(status_code=404, detail="Frontend not built")
-    return FileResponse(target)
+    return FileResponse(target, headers=PAGE_HEADERS)
 
 
 if (DIST / "assets").is_dir():
-    app.mount("/assets", StaticFiles(directory=DIST / "assets"), name="assets")
+    app.mount("/assets", AssetFiles(directory=DIST / "assets"), name="assets")
 if DIST.is_dir():
     app.mount("/", StaticFiles(directory=DIST), name="static")

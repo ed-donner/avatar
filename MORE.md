@@ -142,7 +142,7 @@ After the phased build (Phases 0-9), these refinements were made to the prompt a
 
 - **`rules.md` split + heading convention.** The owner knowledge in `knowledge/` is now three files, each with one job: `knowledge.md` (facts about the owner, incl. the jobs/courses guidance and course-resource links), `style.md` (the owner's unique voice and formatting), and `rules.md` (owner-agnostic operating rules: safety, escalation, answer length). Every knowledge file starts its headings at `##` so they nest under the prompt's `#` sections, keeping the assembled prompt's hierarchy consistent.
 - **Hard output cap + cache-friendly ordering.** `build_agent` sets `ModelSettings(max_tokens=4000)` (raised from 2000 so the longest FAQ, ~1,800 tokens, can be relayed in full) as a hard per-reply ceiling (with a graceful "kept it brief" note appended on the rare truncation, detected via the last response's own token usage). The admin's additional-instructions block is placed LAST in the system prompt: prompt caching is prefix-based, so the editable, per-turn block sits after the long static prefix it would otherwise invalidate (and gains recency emphasis).
-- **Model ID passed verbatim, low reasoning.** The Agents SDK's default `MultiProvider` treats an `openai/` prefix as a provider alias and strips it, so OpenRouter received `gpt-5.4-mini`. `agent.RUN_CONFIG` uses `MultiProvider(openai_prefix_mode="model_id", openai_use_responses=False)` so `MODEL` arrives exactly as written; chat completions is pinned on the provider because it captures that setting at construction, before `configure_openrouter()` runs. `ModelSettings` also sets the reasoning effort: "none" at first, then "low" (`REASONING_EFFORT`) after the comparison under "Scope rules from the misuse review". Production moved from `openai/gpt-5.4-mini` to `openai/gpt-6-luna`.
+- **Model ID passed verbatim, low reasoning.** The Agents SDK's default `MultiProvider` treats an `openai/` prefix as a provider alias and strips it, so OpenRouter received `gpt-5.4-mini`. `agent.RUN_CONFIG` uses `MultiProvider(openai_prefix_mode="model_id", openai_use_responses=False)` so `MODEL` arrives exactly as written; chat completions is pinned on the provider because it captures that setting at construction, before `configure_openrouter()` runs. `ModelSettings` also sets the reasoning effort: "none" at first, then "low" (`REASONING_EFFORT`) after the comparison under "Scope rules from the misuse review", then "none" again with the priority tier (see "Priority tier, reasoning "none"" below). Production moved from `openai/gpt-5.4-mini` to `openai/gpt-6-luna`.
 - **Code blocks and tables in messages.** `frontend/src/lib/markdown.ts` renders fenced code blocks (verbatim; an indented fence inside a list item has its indent removed) and pipe tables (alignment, outer pipes optional, `\|` for a literal pipe, an all-empty header row dropped). Numbered lists keep the author's numbering (`<ol start>`) when a blank line or code block splits them. Both scroll sideways inside the bubble, which is capped at its column width so it never runs off a phone screen. The prompt tells the Avatar it can use inline code, code blocks and tables wherever they help, and to keep an FAQ answer's links, code blocks and tables as written; `rules.md` exempts FAQ answers from the answer-length rule, so the Avatar gives the full answer when the question warrants it.
 - **`Qn` lists the FAQ.** A literal `Qn` (any case; distinct from `Q2`-style numbers) is an instant, no-LLM reply listing every FAQ's concise question as `- **Q2:** ...`. It is stored with `tool_calls=[{"type": "instant", "faq": "list"}]` and tagged "instant · FAQ list" in the chat. `knowledge.instant_reply()` handles both instant forms. The prompt mentions both shortcuts so the Avatar can point visitors to them.
 
@@ -188,6 +188,27 @@ After the phased build (Phases 0-9), these refinements were made to the prompt a
     reasoning tokens a reply.
   - "Low" never pushed for a decline; "none" still did in about 1 in 5 declines.
   - The owner switched to "low".
+- **Pages revalidated after a deploy (2026-10-26).** After the first deploy of these changes, `?q=`
+  links failed in a browser that had visited them before: it reused the old release's page, whose
+  hashed script (`main-CqFiJY_5.js`) the new image doesn't have, and got a 404. `index.html` and
+  `admin.html` were sent with `Last-Modified` but no `Cache-Control`, so browsers guessed a freshness
+  of about a tenth of the page's age, nearly two weeks for a page built months earlier. Both pages now
+  carry `Cache-Control: no-cache`, so a browser checks with the server on every load (a 304 when
+  nothing changed). Browsers already holding an old page won't ask until their guess runs out, so a
+  request for a missing `/assets/*.js` gets a small script (`STALE_PAGE_SCRIPT`) instead of a 404: it
+  loads the page once more with a `fresh=` parameter, a URL the cache has no copy of, and the current
+  page then drops the parameter along with `?q=`.
+- **Priority tier, reasoning "none" (2026-10-26).** Replies were slower on v8 than on v7: a median
+  of 4.7s to the stored reply against 3.0s, and 6.3s against 3.8s for FAQ replies (from Supabase
+  timestamps). An 80-turn test on the real agent crossed OpenAI's priority tier with reasoning "none"
+  and "low". Priority streamed text about 1.5x faster (about 220 against 150 tokens a second) at twice
+  the price, but didn't shorten the wait for the first token. Reasoning made no consistent difference:
+  "low" now spends 0-2 reasoning tokens a reply. The owner chose priority with "none":
+  `ModelSettings` sends `extra_body={"service_tier": SERVICE_TIER}` and `REASONING_EFFORT = "none"`.
+  OpenRouter passes the tier through, and the response's `service_tier` confirmed OpenAI served it.
+  Time spent outside the model is unchanged: a new `mcp-server-fetch` is launched every turn (about
+  0.6s), the admin instructions are read from Supabase every turn, and an FAQ reply makes two model
+  calls.
 
 ## Security hardening (extras)
 

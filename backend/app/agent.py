@@ -247,9 +247,15 @@ Output only the Avatar's next reply text. Do not prefix it with "Avatar:".
 {instructions_block}"""
 
 
-# Low, not none: in a 60-turn comparison on gpt-6-luna, "low" was as fast and as cheap (about 19
-# reasoning tokens a reply) and was the only setting that never pushed the owner about a declined request.
-REASONING_EFFORT = "low"
+# None: by 2026-10-26 "low" spent only 0-2 reasoning tokens a reply on gpt-6-luna and made no
+# consistent difference to speed. (On 2026-10-22 "low" spent about 19, and "none" pushed the owner
+# about 1 in 5 declined requests where "low" never did.)
+REASONING_EFFORT = "none"
+
+# OpenAI's priority tier ("Fast mode"), passed through by OpenRouter: about 1.5x the output speed for
+# twice the price. It doesn't shorten the wait for the first token. OpenRouter falls back to the
+# standard tier, billed at the standard price, if a priority endpoint isn't available.
+SERVICE_TIER = "priority"
 
 
 def build_agent(mcp_servers: list | None = None) -> Agent:
@@ -259,7 +265,11 @@ def build_agent(mcp_servers: list | None = None) -> Agent:
         name="Avatar",
         instructions=build_system_prompt(),
         model=settings.model,
-        model_settings=ModelSettings(max_tokens=MAX_OUTPUT_TOKENS, reasoning=Reasoning(effort=REASONING_EFFORT)),
+        model_settings=ModelSettings(
+            max_tokens=MAX_OUTPUT_TOKENS,
+            reasoning=Reasoning(effort=REASONING_EFFORT),
+            extra_body={"service_tier": SERVICE_TIER},
+        ),
         tools=[faq_tool, push_tool],
         mcp_servers=mcp_servers or [],
     )

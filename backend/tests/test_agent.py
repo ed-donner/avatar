@@ -101,8 +101,12 @@ def test_agent_has_output_token_cap():
     assert agent.build_agent().model_settings.max_tokens == agent.MAX_OUTPUT_TOKENS == 4000
 
 
-def test_agent_reasoning_low():
-    assert agent.build_agent().model_settings.reasoning.effort == agent.REASONING_EFFORT == "low"
+def test_agent_reasoning_none():
+    assert agent.build_agent().model_settings.reasoning.effort == agent.REASONING_EFFORT == "none"
+
+
+def test_agent_requests_priority_tier():
+    assert agent.build_agent().model_settings.extra_body == {"service_tier": "priority"}
 
 
 def test_model_id_sent_to_openrouter_verbatim():
